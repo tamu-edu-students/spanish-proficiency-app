@@ -1,0 +1,201 @@
+/* ── Reset ── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* ══════════════════════════════
+   MOBILE LAYOUT (default)
+   ══════════════════════════════ */
+
+body {
+  background: #fff;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  background: #fff;
+}
+
+/* Mobile header */
+.header {
+  background: #500000;
+  color: white;
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.app-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.level-select {
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* Screen content */
+.screen-area {
+  flex: 1;
+  overflow-y: auto;
+  background: #f8f8f8;
+}
+
+/* Bottom tab bar on mobile */
+.tab-bar {
+  display: flex;
+  flex-direction: row;
+  background: #fff;
+  border-top: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 12px 4px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  color: #888;
+  cursor: pointer;
+  border-top: 3px solid transparent;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.tab-btn.active {
+  color: #500000;
+  border-top-color: #500000;
+  font-weight: 600;
+}
+
+/* Hidden on mobile */
+.sidebar-title { display: none; }
+.sidebar-level { display: none; }
+
+/* ══════════════════════════════
+   DESKTOP LAYOUT (900px+)
+   ══════════════════════════════ */
+
+@media (min-width: 900px) {
+
+  html, body {
+    height: 100%;
+    background: #eeedf5;
+  }
+
+  body {
+    display: flex;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  #root {
+    width: 100%;
+    display: flex;
+    align-items: stretch;
+  }
+
+  .app {
+    flex-direction: row;
+    width: 100%;
+    height: 100vh;
+    border-radius: 0;
+    box-shadow: none;
+    background: #fff;
+  }
+
+  /* Hide mobile header */
+  .header { display: none; }
+
+  /* Left sidebar */
+  .tab-bar {
+    flex-direction: column;
+    width: 220px;
+    min-width: 220px;
+    border-top: none;
+    border-right: 1px solid #e8e8e8;
+    background: #fff;
+    justify-content: flex-start;
+    padding: 0;
+    overflow-y: auto;
+  }
+
+  /* Show sidebar brand */
+  .sidebar-title {
+    display: block;
+    font-size: 20px;
+    font-weight: 700;
+    color: #500000;
+    padding: 28px 24px 12px;
+  }
+
+  /* Show level selector in sidebar */
+  .sidebar-level {
+    display: block;
+    padding: 0 16px 20px;
+    border-bottom: 1px solid #e8e8e8;
+    margin-bottom: 12px;
+  }
+
+  .sidebar-level select {
+    width: 100%;
+    background: #f9f0f0;
+    color: #500000;
+    border: 1.5px solid #c8a0a0;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    outline: none;
+  }
+
+  /* Desktop tab buttons */
+  .tab-btn {
+    flex: none;
+    width: 100%;
+    text-align: left;
+    padding: 13px 24px;
+    font-size: 14px;
+    color: #555;
+    border-top: none;
+    border-left: 3px solid transparent;
+    border-radius: 0;
+    transition: all 0.15s;
+  }
+
+  .tab-btn:hover {
+    background: #f5f5ff;
+    color: #500000;
+  }
+
+  .tab-btn.active {
+    color: #500000;
+    border-top-color: transparent;
+    border-left-color: #500000;
+    background: #f9f0f0;
+    font-weight: 600;
+  }
+
+  /* Main content area */
+  .screen-area {
+    flex: 1;
+    overflow-y: auto;
+    background: #f8f8f8;
+    height: 100vh;
+  }
+}

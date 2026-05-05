@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EspañolAI — Texas A&M University</title>
+
+  <!-- TAMU Brand Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@200;300;400;500;600;700&family=Work+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,800&family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ── TAMU CSS Variables ── */
+    :root {
+      --tamu-maroon:      #500000;
+      --tamu-dark-maroon: #3C0000;
+      --tamu-light-maroon:#732F2F;
+      --tamu-white:       #FFFFFF;
+      --tamu-black:       #202020;
+      --tamu-dark-gray:   #3E3E3E;
+      --tamu-gray:        #707070;
+      --tamu-light-gray:  #D1D1D1;
+      --tamu-tan:         #D6D3C4;
+
+      --font-display:  'Oswald', Impact, sans-serif;
+      --font-headline: 'Work Sans', Arial, sans-serif;
+      --font-body:     'Open Sans', Arial, sans-serif;
+    }
+
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      color: var(--tamu-black);
+      background: var(--tamu-white);
+      overflow-x: hidden;
+    }
+
+    /* ── Navigation ── */
+    .tamu-nav {
+      background: var(--tamu-maroon);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      height: 64px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .tamu-nav img { height: 40px; }
+
+    .nav-divider {
+      width: 1px;
+      height: 32px;
+      background: rgba(255,255,255,0.3);
+      margin: 0 1.25rem;
+    }
+
+    .nav-title {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: var(--tamu-white);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .nav-links {
+      margin-left: auto;
+      display: flex;
+      gap: 2rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: rgba(255,255,255,0.85);
+      font-family: var(--font-headline);
+      font-size: 0.875rem;
+      font-weight: 500;
+      text-decoration: none;
+      letter-spacing: 0.03em;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--tamu-white); }
+
+    .nav-cta {
+      margin-left: 2rem;
+      background: var(--tamu-white);
+      color: var(--tamu-maroon) !important;
+      padding: 0.5rem 1.25rem;
+      font-family: var(--font-display) !important;
+      font-weight: 600 !important;
+      font-size: 0.8rem !important;
+      text-transform: uppercase;
+      letter-spacing: 0.08em !important;
+    }
+
+    /* ── Hero Section ── */
+    .hero {
+      background: var(--tamu-maroon);
+      color: var(--tamu-white);
+      padding: 6rem 4rem 5rem;
+      position: relative;
+      overflow: hidden;
+      min-height: 85vh;
+      display: flex;
+      align-items: center;
+    }
+
+    /* Diagonal graphic element */
+    .hero::before {
+      content: '';
+      position: absolute;
+      right: -100px;
+      top: 0;
+      width: 55%;
+      height: 100%;
+      background: var(--tamu-dark-maroon);
+      transform: skewX(-8deg);
+      opacity: 0.6;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      right: 80px;
+      top: 0;
+      width: 45%;
+      height: 100%;
+      background: var(--tamu-light-maroon);
+      transform: skewX(-8deg);
+      opacity: 0.15;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 640px;
+      animation: slideUp 0.8s ease both;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .hero-eyebrow {
+      font-family: var(--font-headline);
+      font-weight: 300;
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: rgba(255,255,255,0.75);
+      margin-bottom: 1rem;
+      animation: slideUp 0.8s 0.1s ease both;
+    }
+
+    .hero h1 {
+      font-family: var(--font-headline);
+      font-weight: 900;
+      font-size: clamp(3rem, 6vw, 5.5rem);
+      line-height: 1.0;
+      text-transform: uppercase;
+      color: var(--tamu-white);
+      margin-bottom: 1.5rem;
+      animation: slideUp 0.8s 0.2s ease both;
+    }
+
+    .hero h1 span {
+      color: var(--tamu-tan);
+    }
+
+    .hero-desc {
+      font-family: var(--font-body);
+      font-size: 1.125rem;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.85);
+      max-width: 520px;
+      margin-bottom: 2.5rem;
+      animation: slideUp 0.8s 0.3s ease both;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      animation: slideUp 0.8s 0.4s ease both;
+    }
+
+    .btn-primary {
+      background: var(--tamu-white);
+      color: var(--tamu-maroon);
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 1rem 2.5rem;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      transition: background 0.2s, transform 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: var(--tamu-tan);
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--tamu-white);
+      font-family: var(--font-display);
+      font-weight: 500;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 1rem 2.5rem;
+      border: 2px solid rgba(255,255,255,0.6);
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--tamu-white);
+      transform: translateY(-2px);
+    }
+
+    /* Hero right side — app preview */
+    .hero-visual {
+      position: absolute;
+      right: 4rem;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 3;
+      animation: slideUp 0.8s 0.5s ease both;
+    }
+
+    .app-preview {
+      background: var(--tamu-white);
+      border-radius: 16px;
+      width: 280px;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.4);
+      overflow: hidden;
+    }
+
+    .app-preview-header {
+      background: var(--tamu-maroon);
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .app-preview-header span {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 600;
+      color: white;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .app-preview-body {
+      padding: 16px;
+      background: #f8f8f8;
+    }
+
+    .chat-bubble {
+      background: var(--tamu-white);
+      border: 1px solid #e0e0e0;
+      border-radius: 12px 12px 12px 4px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--tamu-black);
+      margin-bottom: 10px;
+      line-height: 1.5;
+    }
+
+    .chat-bubble.user {
+      background: var(--tamu-maroon);
+      color: white;
+      border-radius: 12px 12px 4px 12px;
+      text-align: right;
+      border: none;
+    }
+
+    .app-preview-tabs {
+      display: flex;
+      border-top: 1px solid #e0e0e0;
+      background: white;
+    }
+
+    .preview-tab {
+      flex: 1;
+      padding: 10px 4px;
+      text-align: center;
+      font-size: 10px;
+      color: #888;
+      font-family: var(--font-body);
+    }
+
+    .preview-tab.active {
+      color: var(--tamu-maroon);
+      font-weight: 600;
+      border-top: 2px solid var(--tamu-maroon);
+    }
+
+    /* ── Stats Bar ── */
+    .stats-bar {
+      background: var(--tamu-dark-maroon);
+      padding: 2rem 4rem;
+      display: flex;
+      justify-content: center;
+      gap: 4rem;
+      flex-wrap: wrap;
+    }
+
+    .stat-item { text-align: center; }
+
+    .stat-number {
+      font-family: var(--font-display);
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--tamu-white);
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      display: block;
+    }
+
+    .stat-label {
+      font-family: var(--font-headline);
+      font-size: 0.8rem;
+      font-weight: 500;
+      font-style: italic;
+      color: rgba(255,255,255,0.65);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 4px;
+      display: block;
+    }
+
+    /* ── Features Section ── */
+    .section-features {
+      padding: 6rem 4rem;
+      background: var(--tamu-white);
+    }
+
+    .section-label {
+      font-family: var(--font-display);
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--tamu-maroon);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin-bottom: 0.75rem;
+    }
+
+    .section-title {
+      font-family: var(--font-headline);
+      font-weight: 900;
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      text-transform: uppercase;
+      color: var(--tamu-black);
+      line-height: 1.0;
+      margin-bottom: 1rem;
+    }
+
+    .section-title span { color: var(--tamu-maroon); }
+
+    .section-subtitle {
+      font-family: var(--font-body);
+      font-size: 1.05rem;
+      color: var(--tamu-gray);
+      line-height: 1.7;
+      max-width: 520px;
+      margin-bottom: 3.5rem;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem;
+    }
+
+    .feature-card {
+      background: var(--tamu-white);
+      border-top: 4px solid var(--tamu-maroon);
+      padding: 2rem;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 32px rgba(80,0,0,0.12);
+    }
+
+    .feature-icon {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      display: block;
+    }
+
+    .feature-title {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--tamu-maroon);
+      margin-bottom: 0.75rem;
+    }
+
+    .feature-desc {
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      color: var(--tamu-dark-gray);
+      line-height: 1.7;
+    }
+
+    /* ── Levels Section ── */
+    .section-tan {
+      background: var(--tamu-tan);
+      padding: 6rem 4rem;
+    }
+
+    .levels-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin-top: 3rem;
+    }
+
+    .level-card {
+      background: var(--tamu-white);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      border-bottom: 4px solid var(--tamu-maroon);
+      transition: transform 0.2s;
+    }
+
+    .level-card:hover { transform: translateY(-4px); }
+
+    .level-badge {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--tamu-maroon);
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+
+    .level-name {
+      font-family: var(--font-headline);
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--tamu-dark-gray);
+      margin-bottom: 0.75rem;
+      display: block;
+    }
+
+    .level-desc {
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      color: var(--tamu-gray);
+      line-height: 1.6;
+    }
+
+    /* ── CTA Section ── */
+    .section-cta {
+      background: var(--tamu-maroon);
+      padding: 6rem 4rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .section-cta::before {
+      content: 'GIG \'EM';
+      position: absolute;
+      font-family: var(--font-display);
+      font-size: 20rem;
+      font-weight: 900;
+      color: rgba(255,255,255,0.03);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      white-space: nowrap;
+      pointer-events: none;
+      letter-spacing: -0.02em;
+    }
+
+    .section-cta h2 {
+      font-family: var(--font-headline);
+      font-weight: 900;
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      text-transform: uppercase;
+      color: var(--tamu-white);
+      margin-bottom: 1rem;
+      position: relative;
+    }
+
+    .section-cta p {
+      font-family: var(--font-body);
+      font-size: 1.1rem;
+      color: rgba(255,255,255,0.8);
+      max-width: 500px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.7;
+      position: relative;
+    }
+
+    .section-cta .btn-primary { position: relative; }
+
+    /* ── Footer ── */
+    footer {
+      background: var(--tamu-black);
+      color: var(--tamu-light-gray);
+      padding: 3rem 4rem;
+    }
+
+    .footer-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 2rem;
+      margin-bottom: 2rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--tamu-dark-gray);
+    }
+
+    .footer-brand img {
+      height: 36px;
+      filter: brightness(0) invert(1);
+      margin-bottom: 0.75rem;
+      display: block;
+    }
+
+    .footer-brand p {
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      color: var(--tamu-gray);
+      max-width: 280px;
+      line-height: 1.6;
+    }
+
+    .footer-links h4 {
+      font-family: var(--font-display);
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--tamu-white);
+      margin-bottom: 1rem;
+    }
+
+    .footer-links ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .footer-links a {
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      color: var(--tamu-gray);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover { color: var(--tamu-white); }
+
+    .footer-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .footer-bottom p {
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      color: var(--tamu-gray);
+    }
+
+    .footer-tagline {
+      font-family: var(--font-display);
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.3);
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .hero { padding: 5rem 2rem 8rem; min-height: auto; }
+      .hero-visual { display: none; }
+      .hero::before, .hero::after { display: none; }
+      .stats-bar { padding: 2rem; gap: 2rem; }
+      .section-features, .section-tan, .section-cta { padding: 4rem 2rem; }
+      .nav-links { display: none; }
+      footer { padding: 2rem; }
+      .footer-top { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Navigation ── -->
+  <nav class="tamu-nav">
+    <img src="https://aux.tamu.edu/logos/boxTAM.svg" alt="Texas A&M University" />
+    <div class="nav-divider"></div>
+    <span class="nav-title">EspañolAI</span>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#levels">Levels</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a href="http://localhost:5173" class="nav-cta">Launch App</a></li>
+    </ul>
+  </nav>
+
+  <!-- ── Hero ── -->
+  <section class="hero">
+    <div class="hero-content">
+      <p class="hero-eyebrow">Texas A&M University &mdash; Language Learning</p>
+      <h1>LEARN<br/><span>ESPAÑOL</span><br/>WITH AI.</h1>
+      <p class="hero-desc">
+        EspañolAI is Texas A&M's AI-powered Spanish tutor.
+        Chat, practice vocabulary, take grammar quizzes, and speak
+        — all in one place, powered by Gemini AI.
+      </p>
+      <div class="hero-buttons">
+        <a href="http://localhost:5173" class="btn-primary">Launch App</a>
+        <a href="#features" class="btn-secondary">Learn More</a>
+      </div>
+    </div>
+
+    <!-- App preview mockup -->
+    <div class="hero-visual">
+      <div class="app-preview">
+        <div class="app-preview-header">
+          <span>EspañolAI</span>
+          <span style="font-size:11px; opacity:0.7;">B1 — Intermediate</span>
+        </div>
+        <div class="app-preview-body">
+          <div class="chat-bubble">
+            ¡Hola! Soy tu tutor de español. ¿De qué quieres hablar hoy?
+          </div>
+          <div class="chat-bubble user">
+            Hello, I want to learn Spanish!
+          </div>
+          <div class="chat-bubble">
+            ¡Perfecto! Empecemos. ¿Cuánto tiempo llevas estudiando español?
+          </div>
+        </div>
+        <div class="app-preview-tabs">
+          <div class="preview-tab active">💬 Chat</div>
+          <div class="preview-tab">🃏 Cards</div>
+          <div class="preview-tab">📝 Quiz</div>
+          <div class="preview-tab">🎤 Voice</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Stats Bar ── -->
+  <div class="stats-bar">
+    <div class="stat-item">
+      <span class="stat-number">4</span>
+      <span class="stat-label">CEFR Levels</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-number">5</span>
+      <span class="stat-label">Learning Modes</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-number">AI</span>
+      <span class="stat-label">Powered by Gemini</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-number">∞</span>
+      <span class="stat-label">Practice Topics</span>
+    </div>
+  </div>
+
+  <!-- ── Features ── -->
+  <section class="section-features" id="features">
+    <p class="section-label">What You Get</p>
+    <h2 class="section-title">FIVE WAYS TO<br/><span>MASTER ESPAÑOL</span></h2>
+    <p class="section-subtitle">
+      Each learning mode is powered by Google's Gemini AI and adapts
+      to your CEFR level in real time.
+    </p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <span class="feature-icon">💬</span>
+        <div class="feature-title">AI Chat Tutor</div>
+        <p class="feature-desc">
+          Have real conversations in Spanish. Gemini replies at your level,
+          gently corrects grammar mistakes, and keeps the conversation going
+          with follow-up questions.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🃏</span>
+        <div class="feature-title">Smart Flashcards</div>
+        <p class="feature-desc">
+          Generate vocabulary cards on any topic — food, travel, work, and more.
+          Rate each card (Again / Hard / Good) to build your personal word bank
+          with spaced repetition.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">📝</span>
+        <div class="feature-title">Grammar Quiz</div>
+        <p class="feature-desc">
+          Fill-in-the-blank grammar questions generated fresh by Gemini.
+          Get Spanish explanations after each answer so you actually
+          understand why you got it right or wrong.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🎤</span>
+        <div class="feature-title">Voice Conversation</div>
+        <p class="feature-desc">
+          Speak into your mic in any language. Gemini hears you, thinks,
+          and replies in natural Spanish audio. Real pronunciation practice
+          without a human tutor.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">📊</span>
+        <div class="feature-title">Progress Tracking</div>
+        <p class="feature-desc">
+          Track your day streak, words learned, quiz accuracy, and CEFR level.
+          Auto level-up when your performance earns it. Your progress
+          never resets — it always builds.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🎓</span>
+        <div class="feature-title">CEFR Levels</div>
+        <p class="feature-desc">
+          Choose A1 through B2. Gemini adjusts vocabulary complexity,
+          sentence length, and correction style to match your exact
+          proficiency level automatically.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Levels ── -->
+  <section class="section-tan" id="levels">
+    <p class="section-label">Proficiency Levels</p>
+    <h2 class="section-title">YOUR LEVEL,<br/><span>YOUR PACE</span></h2>
+    <p class="section-subtitle">
+      Select your CEFR level and Gemini instantly adapts — simpler sentences
+      for beginners, rich idiomatic Spanish for advanced learners.
+    </p>
+
+    <div class="levels-grid">
+      <div class="level-card">
+        <span class="level-badge">A1</span>
+        <span class="level-name">Beginner</span>
+        <p class="level-desc">
+          Basic words, very short sentences, English hints in parentheses.
+          Perfect if you know zero Spanish.
+        </p>
+      </div>
+      <div class="level-card">
+        <span class="level-badge">A2</span>
+        <span class="level-name">Elementary</span>
+        <p class="level-desc">
+          Simple everyday phrases, common verbs, occasional
+          English hints for tricky words.
+        </p>
+      </div>
+      <div class="level-card">
+        <span class="level-badge">B1</span>
+        <span class="level-name">Intermediate</span>
+        <p class="level-desc">
+          Full Spanish sentences, past and future tenses,
+          gentle grammar corrections. No English hints.
+        </p>
+      </div>
+      <div class="level-card">
+        <span class="level-badge">B2</span>
+        <span class="level-name">Upper Intermediate</span>
+        <p class="level-desc">
+          Rich vocabulary, subjunctive mood, idioms.
+          Discusses abstract topics like a native speaker.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CTA ── -->
+  <section class="section-cta" id="about">
+    <h2>READY TO START?</h2>
+    <p>
+      Join Aggies learning Spanish with AI. No download required —
+      just open the app and start speaking.
+    </p>
+    <a href="http://localhost:5173" class="btn-primary">Launch EspañolAI</a>
+  </section>
+
+  <!-- ── Footer ── -->
+  <footer>
+    <div class="footer-top">
+      <div class="footer-brand">
+        <img src="https://aux.tamu.edu/logos/boxTAM.svg" alt="Texas A&M University" />
+        <p>
+          EspañolAI is a Spanish language learning tool built for
+          Texas A&M University students, powered by Google Gemini AI.
+        </p>
+      </div>
+      <div class="footer-links">
+        <h4>App</h4>
+        <ul>
+          <li><a href="http://localhost:5173">Launch App</a></li>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#levels">CEFR Levels</a></li>
+        </ul>
+      </div>
+      <div class="footer-links">
+        <h4>Texas A&M</h4>
+        <ul>
+          <li><a href="https://www.tamu.edu" target="_blank">tamu.edu</a></li>
+          <li><a href="https://liberalarts.tamu.edu" target="_blank">College of Liberal Arts</a></li>
+          <li><a href="https://itaccessibility.tamu.edu" target="_blank">Accessibility</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 Texas A&M University. All rights reserved.</p>
+      <span class="footer-tagline">Gig 'Em Aggies</span>
+    </div>
+  </footer>
+
+</body>
+</html>
