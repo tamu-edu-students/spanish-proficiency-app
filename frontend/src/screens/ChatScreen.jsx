@@ -1,17 +1,29 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 
 const API = 'http://127.0.0.1:8000/api'
 
-function ChatScreen({ level }) {
+const GREETING = {
+  'A1': '¡Hola! (Hello!) Soy tu tutor. (I am your tutor.) ¿Como te llamas? (What is your name?)',
+  'A2': '¡Hola! Soy tu tutor de español. ¿Cómo estás hoy?',
+  'B1': '¡Hola! Soy tu tutor de español. ¿De qué quieres hablar hoy?',
+  'B2': '¡Bienvenido! Soy tu tutor de español. ¿Sobre qué tema te gustaría conversar hoy?',
+}
+
+function ChatScreen({ level, sessionId }) {
   const [messages, setMessages] = useState([
-    {
-      role: 'model',
-      parts: ['¡Hola! Soy tu tutor de español. ¿De qué quieres hablar hoy?']
-    }
+    { role: 'model', parts: [GREETING[level] || GREETING['B1']] }
   ])
   const [input, setInput]     = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Reset conversation when level changes
+  useEffect(() => {
+    setMessages([
+      { role: 'model', parts: [GREETING[level] || GREETING['B1']] }
+    ])
+    setInput('')
+  }, [level])
 
   async function sendMessage() {
     if (!input.trim()) return
@@ -22,15 +34,22 @@ function ChatScreen({ level }) {
     setInput('')
     setLoading(true)
 
-    // ── Track activity BEFORE API call so it always saves ──
     try {
-      const activities = JSON.parse(localStorage.getItem('activities') || '[]')
-      activities.unshift({
-        label: 'Chat conversation',
-        color: '#500000',
-        time:  new Date().toISOString()
-      })
-      localStorage.setItem('activities', JSON.stringify(activities.slice(0, 10)))
+      const activities     = JSON.parse(localStorage.getItem('activities') || '[]')
+      const lastActivity   = activities[0]
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
+      const recentChat     = lastActivity &&
+        lastActivity.label === 'Chat conversation' &&
+        new Date(lastActivity.time) > fiveMinutesAgo
+
+      if (!recentChat) {
+        activities.unshift({
+          label: 'Chat conversation',
+          color: '#500000',
+          time:  new Date().toISOString()
+        })
+        localStorage.setItem('activities', JSON.stringify(activities.slice(0, 10)))
+      }
     } catch (e) {
       console.error('Activity tracking error:', e)
     }
@@ -39,14 +58,13 @@ function ChatScreen({ level }) {
       const response = await axios.post(`${API}/chat/`, {
         messages:   updatedMessages,
         level:      level,
-        session_id: 'user_001'
+        session_id: sessionId
       })
 
-      const botMessage = {
+      setMessages([...updatedMessages, {
         role:  'model',
         parts: [response.data.reply]
-      }
-      setMessages([...updatedMessages, botMessage])
+      }])
 
     } catch (error) {
       console.error('Error:', error)
@@ -69,10 +87,26 @@ function ChatScreen({ level }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
+      {/* Level indicator */}
+      <div style={{
+        padding:    '8px 16px',
+        background: '#faf8f8',
+        borderBottom: '1px solid #f0e8e8',
+        fontSize:   '12px',
+        color:      '#888',
+        fontFamily: "'Open Sans', sans-serif"
+      }}>
+        Chatting at level <strong style={{ color: '#500000' }}>{level}</strong> — change level in sidebar to restart conversation
+      </div>
+
       {/* Message list */}
       <div style={{
-        flex: 1, overflowY: 'auto', padding: '16px',
-        display: 'flex', flexDirection: 'column', gap: '12px'
+        flex:          1,
+        overflowY:     'auto',
+        padding:       '16px',
+        display:       'flex',
+        flexDirection: 'column',
+        gap:           '12px'
       }}>
         {messages.map((msg, i) => (
           <div key={i} style={{
@@ -96,7 +130,6 @@ function ChatScreen({ level }) {
           </div>
         ))}
 
-        {/* Typing indicator */}
         {loading && (
           <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
             <div style={{

@@ -17,10 +17,16 @@ function VoiceScreen({ level }) {
   const levelRef       = useRef(level)
   const listeningRef   = useRef(false)
   const accumulatedRef = useRef('')
+  const historyRef     = useRef([])
 
+  // Keep levelRef and historyRef always in sync
   useEffect(() => {
     levelRef.current = level
   }, [level])
+
+  useEffect(() => {
+    historyRef.current = history
+  }, [history])
 
   function trackVoiceActivity() {
     try {
@@ -41,14 +47,28 @@ function VoiceScreen({ level }) {
     } catch (e) {}
   }
 
+  // Strip bracketed English text before speaking
+  // e.g. "Hola (hello), como estas (how are you)?" -> "Hola, como estas?"
+  function stripBrackets(text) {
+    return text
+      .replace(/\(.*?\)/g, '')   // remove (anything in parens)
+      .replace(/\s{2,}/g, ' ')   // collapse double spaces
+      .replace(/\s,/g, ',')      // fix " ," -> ","
+      .replace(/\s\./g, '.')     // fix " ." -> "."
+      .trim()
+  }
+
   async function sendToGemini(userText) {
     setThinking(true)
-    setStatus('Gemini está pensando...')
-    const currentLevel = levelRef.current
+    setStatus('Gemini esta pensando...')
+
+    // Read from refs so we always have current values, not stale closure
+    const currentLevel   = levelRef.current
+    const currentHistory = historyRef.current
 
     try {
       const newMessages = [
-        ...history,
+        ...currentHistory,
         { role: 'user', parts: [userText] }
       ]
 
@@ -61,8 +81,13 @@ function VoiceScreen({ level }) {
       const spanishReply = response.data.reply
       setReply(spanishReply)
       setThinking(false)
-      setHistory([...newMessages, { role: 'model', parts: [spanishReply] }])
-      speakSpanish(spanishReply)
+
+      const updatedHistory = [...newMessages, { role: 'model', parts: [spanishReply] }]
+      setHistory(updatedHistory)
+      historyRef.current = updatedHistory
+
+      // Speak only the Spanish — strip out any bracketed English hints
+      speakSpanish(stripBrackets(spanishReply))
 
     } catch (error) {
       console.error('Error:', error)
@@ -84,7 +109,7 @@ function VoiceScreen({ level }) {
     recognition.lang           = 'en-US'
 
     recognition.onstart = () => {
-      console.log('✓ Recognition started')
+      console.log('Recognition started')
     }
 
     recognition.onresult = (e) => {
@@ -93,8 +118,6 @@ function VoiceScreen({ level }) {
         const text = e.results[i][0].transcript
         if (e.results[i].isFinal) {
           accumulatedRef.current += text + ' '
-          console.log('Final chunk:', text)
-          console.log('Total so far:', accumulatedRef.current)
         } else {
           interim += text
         }
@@ -110,22 +133,14 @@ function VoiceScreen({ level }) {
         setListening(false)
         listeningRef.current = false
       }
-      // no-speech is normal — restart in onend
     }
 
     recognition.onend = () => {
-      console.log('Chunk ended. Still listening:', listeningRef.current)
-      console.log('Accumulated:', accumulatedRef.current)
-
       if (!listeningRef.current) return
-
-      // Restart immediately to capture next chunk
-      // Small delay prevents overlap errors
       setTimeout(() => {
         if (listeningRef.current) {
           try {
             recognition.start()
-            console.log('✓ Restarted for next chunk')
           } catch (e) {
             console.log('Restart error:', e.message)
           }
@@ -141,7 +156,6 @@ function VoiceScreen({ level }) {
     }
   }, [])
 
-  // ── Start listening ──────────────────────────────────────────
   function startListening() {
     if (listening || speaking || thinking) return
     if (!recognitionRef.current) return
@@ -163,7 +177,6 @@ function VoiceScreen({ level }) {
     }
   }
 
-  // ── Stop listening ───────────────────────────────────────────
   function stopListening() {
     if (!listeningRef.current) return
 
@@ -172,10 +185,8 @@ function VoiceScreen({ level }) {
 
     try { recognitionRef.current.stop() } catch (e) {}
 
-    // Wait for final onresult to fire before reading accumulated text
     setTimeout(() => {
       const fullText = accumulatedRef.current.trim()
-      console.log('Final full text:', fullText)
 
       if (!fullText) {
         setStatus("I didn't hear anything. Tap to try again.")
@@ -191,7 +202,6 @@ function VoiceScreen({ level }) {
     }, 300)
   }
 
-  // ── Speak Spanish ────────────────────────────────────────────
   function speakSpanish(text) {
     setSpeaking(true)
     setStatus('Gemini is speaking...')
@@ -211,7 +221,7 @@ function VoiceScreen({ level }) {
 
     if (spanishVoice) utterance.voice = spanishVoice
 
-    utterance.onend  = () => { setSpeaking(false); setStatus('Tap the mic to speak again') }
+    utterance.onend   = () => { setSpeaking(false); setStatus('Tap the mic to speak again') }
     utterance.onerror = () => { setSpeaking(false); setStatus('Tap the mic to speak') }
 
     window.speechSynthesis.speak(utterance)
@@ -261,6 +271,20 @@ function VoiceScreen({ level }) {
       }}>
         Speak Spanish or English — Gemini always replies in Spanish
       </p>
+
+      {/* Level indicator */}
+      <div style={{
+        background:   '#f0eaea',
+        borderRadius: '20px',
+        padding:      '4px 14px',
+        marginBottom: '12px',
+        fontSize:     '12px',
+        color:        '#500000',
+        fontFamily:   "'Open Sans', sans-serif",
+        fontWeight:   '600'
+      }}>
+        Level: {level}
+      </div>
 
       {/* Status pill */}
       <div style={{
@@ -428,12 +452,12 @@ function VoiceScreen({ level }) {
             fontSize:   '13px',
             color:      '#999'
           }}>
-            Gemini está pensando en español...
+            Gemini esta pensando en espanol...
           </p>
         </div>
       )}
 
-      {/* Gemini reply */}
+      {/* Gemini reply — show full text including brackets for reading */}
       {reply && !thinking && (
         <div style={{
           background:   '#E1F5EE',
@@ -471,7 +495,7 @@ function VoiceScreen({ level }) {
         color:      '#bbb',
         marginTop:  '16px'
       }}>
-        Level: {level} • Tap mic to start — tap again to send
+        Level: {level} - Tap mic to start, tap again to send
       </p>
 
     </div>

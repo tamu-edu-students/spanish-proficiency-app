@@ -7,73 +7,110 @@ import ProgressScreen  from './screens/ProgressScreen'
 import VoiceScreen     from './screens/VoiceScreen'
 import './App.css'
 
-const API = 'http://127.0.0.1:8000/api'
+const API     = 'http://127.0.0.1:8000/api'
+const BACKEND = 'http://127.0.0.1:8000'
 
 const LEVELS = [
-  { value: 'A1', label: 'A1 — Beginner'          },
-  { value: 'A2', label: 'A2 — Elementary'         },
-  { value: 'B1', label: 'B1 — Intermediate'       },
-  { value: 'B2', label: 'B2 — Upper Intermediate' },
+  { value: 'A1', label: 'A1 - Beginner'          },
+  { value: 'A2', label: 'A2 - Elementary'         },
+  { value: 'B1', label: 'B1 - Intermediate'       },
+  { value: 'B2', label: 'B2 - Upper Intermediate' },
 ]
 
 const TABS = [
-  { key: 'chat',      label: '💬 Chat'     },
-  { key: 'flashcard', label: '🃏 Tarjetas' },
-  { key: 'quiz',      label: '📝 Quiz'     },
-  { key: 'progress',  label: '📊 Progreso' },
-  { key: 'voice',     label: '🎤 Voz'      },
+  { key: 'chat',      label: 'Chat'     },
+  { key: 'flashcard', label: 'Tarjetas' },
+  { key: 'quiz',      label: 'Quiz'     },
+  { key: 'progress',  label: 'Progreso' },
+  { key: 'voice',     label: 'Voz'      },
 ]
 
-function LevelSelect({ value, onChange }) {
+function LevelSelect({ value, onChange, disabled }) {
   return (
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      className="level-select"
-    >
-      {LEVELS.map(l => (
-        <option key={l.value} value={l.value}>{l.label}</option>
-      ))}
-    </select>
+    <div style={{ position: 'relative' }}>
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        disabled={disabled}
+        className="level-select"
+        style={{ opacity: disabled ? 0.45 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}
+      >
+        {LEVELS.map(l => (
+          <option key={l.value} value={l.value}>{l.label}</option>
+        ))}
+      </select>
+      {disabled && (
+        <div style={{
+          position:   'absolute',
+          bottom:     '-18px',
+          left:       '0',
+          fontSize:   '10px',
+          color:      '#999',
+          whiteSpace: 'nowrap',
+          fontFamily: "'Open Sans', sans-serif"
+        }}>
+          Change level before Voice
+        </div>
+      )}
+    </div>
   )
 }
 
 function App() {
-  const [activeTab, setActiveTab] = useState('chat')
-  const [userLevel, setUserLevel] = useState('B1')
+  const [activeTab, setActiveTab]       = useState('chat')
+  const [userLevel, setUserLevel]       = useState('A1')
+  const [user, setUser]                 = useState(null)
+  const [checkingAuth, setCheckingAuth] = useState(true)
 
-  // ── Update streak every time app opens ──────────────────────
-  // Words learned and quiz accuracy NEVER reset — only streak resets
-  // if user misses a day
+  const levelLocked = activeTab === 'voice'
+
   useEffect(() => {
-    updateStreak()
-    markTodayPracticed()
+    checkAuth()
   }, [])
+
+  useEffect(() => {
+    if (user) {
+      updateStreak()
+      markTodayPracticed()
+    }
+  }, [user])
+
+  async function checkAuth() {
+    try {
+      const response = await axios.get(`${API}/me/`, { withCredentials: true })
+      setUser(response.data)
+    } catch (e) {
+      setUser(null)
+    } finally {
+      setCheckingAuth(false)
+    }
+  }
+
+  function login() {
+    window.location.href = `${BACKEND}/accounts/login/?next=/`
+  }
+
+  function logout() {
+    window.location.href = `${BACKEND}/accounts/logout/`
+  }
 
   function updateStreak() {
     const today     = new Date().toDateString()
     const lastVisit = localStorage.getItem('lastVisit')
     const streak    = parseInt(localStorage.getItem('streak') || '0')
 
-    // Already counted today — don't update
     if (lastVisit === today) return
 
     const yesterday = new Date()
     yesterday.setDate(yesterday.getDate() - 1)
 
-    // If practiced yesterday → continue streak
-    // If missed a day → reset streak to 1
-    // Words learned and accuracy are NOT touched here — they persist forever
-    const newStreak = lastVisit === yesterday.toDateString()
-      ? streak + 1
-      : 1
+    const newStreak = lastVisit === yesterday.toDateString() ? streak + 1 : 1
 
     localStorage.setItem('lastVisit', today)
     localStorage.setItem('streak', newStreak.toString())
 
-    // Save only streak to backend — words and accuracy unchanged
     axios.post(`${API}/progress/`, {
-      session_id: 'user_001',
+      session_id: user?.session_id || 'dev_001',
       streak:     newStreak
     }).catch(e => console.error('Streak save error:', e))
   }
@@ -87,21 +124,110 @@ function App() {
     }
   }
 
+  // Loading screen
+  if (checkingAuth) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#500000' }}>
+        <div style={{ textAlign: 'center' }}>
+          <img
+            src="https://aux.tamu.edu/logos/boxTAM.svg"
+            alt="Texas A&M"
+            style={{ height: '60px', display: 'block', margin: '0 auto 20px', filter: 'brightness(0) invert(1)' }}
+          />
+          <p style={{ fontFamily: "'Oswald', sans-serif", fontSize: '16px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.8)' }}>
+            Loading EspanolAI...
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Login screen
+  if (!user) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#500000' }}>
+        <div style={{ background: 'white', padding: '48px 40px', textAlign: 'center', maxWidth: '400px', width: '90%', borderTop: '6px solid #3C0000' }}>
+          <img
+            src="https://aux.tamu.edu/logos/boxTAM.svg"
+            alt="Texas A&M University"
+            style={{ height: '50px', marginBottom: '12px' }}
+          />
+          <p style={{ fontFamily: "'Oswald', sans-serif", fontSize: '26px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#500000', marginBottom: '8px' }}>
+            EspanolAI
+          </p>
+          <p style={{ fontFamily: "'Open Sans', sans-serif", fontSize: '13px', color: '#707070', marginBottom: '32px', lineHeight: '1.6' }}>
+            AI-powered Spanish tutor for Texas A&M students. Sign in with your TAMU NetID to get started.
+          </p>
+          <button
+            onClick={login}
+            style={{ width: '100%', padding: '14px', background: '#500000', color: 'white', border: 'none', fontSize: '14px', fontFamily: "'Oswald', sans-serif", fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer', marginBottom: '16px' }}
+            onMouseEnter={e => e.target.style.background = '#3C0000'}
+            onMouseLeave={e => e.target.style.background = '#500000'}
+          >
+            Sign in with TAMU NetID
+          </button>
+          <p style={{ fontFamily: "'Open Sans', sans-serif", fontSize: '11px', color: '#999' }}>
+            Uses Texas A&M Central Authentication Service (CAS)
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  const SESSION_ID = user.session_id
+
   return (
     <div className="app">
 
       {/* Mobile header */}
       <div className="header">
-        <span className="app-title">EspañolAI</span>
-        <LevelSelect value={userLevel} onChange={setUserLevel} />
+        <span className="app-title">EspanolAI</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: levelLocked ? '12px' : '0' }}>
+          <LevelSelect value={userLevel} onChange={setUserLevel} disabled={levelLocked} />
+          {!user.dev_mode && (
+            <button
+              onClick={logout}
+              style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', padding: '4px 10px', fontSize: '11px', fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer' }}
+            >
+              Sign Out
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Sidebar (desktop) / Tab bar (mobile) */}
+      {/* Sidebar on desktop / bottom tab bar on mobile */}
       <div className="tab-bar">
-        <div className="sidebar-title">EspañolAI</div>
-        <div className="sidebar-level">
-          <LevelSelect value={userLevel} onChange={setUserLevel} />
+
+        <div className="sidebar-logo">
+          <img src="https://aux.tamu.edu/logos/boxTAM.svg" alt="Texas A&M University" />
         </div>
+
+        <div className="sidebar-title">EspanolAI</div>
+
+        {/* User info - desktop only */}
+        <div className="sidebar-user">
+          {user.dev_mode ? (
+            <div>
+              <span className="dev-badge">Dev Mode</span>
+              <p className="user-name">{user.name || user.netid}</p>
+            </div>
+          ) : (
+            <div>
+              <p className="user-name">{user.name || user.netid}</p>
+              <p className="user-email">{user.netid}@tamu.edu</p>
+              <button className="signout-btn" onClick={logout}>Sign Out</button>
+            </div>
+          )}
+        </div>
+
+        {/* Level selector - locked on Voz tab */}
+        <div className="sidebar-level">
+          <span className="sidebar-level-label">
+            Proficiency Level {levelLocked ? '(locked on Voz)' : ''}
+          </span>
+          <LevelSelect value={userLevel} onChange={setUserLevel} disabled={levelLocked} />
+        </div>
+
         {TABS.map(tab => (
           <button
             key={tab.key}
@@ -115,10 +241,10 @@ function App() {
 
       {/* Main content */}
       <div className="screen-area">
-        {activeTab === 'chat'      && <ChatScreen      level={userLevel} />}
-        {activeTab === 'flashcard' && <FlashcardScreen level={userLevel} />}
-        {activeTab === 'quiz'      && <QuizScreen      level={userLevel} />}
-        {activeTab === 'progress'  && <ProgressScreen  level={userLevel} key={activeTab} />}
+        {activeTab === 'chat'      && <ChatScreen      level={userLevel} sessionId={SESSION_ID} />}
+        {activeTab === 'flashcard' && <FlashcardScreen level={userLevel} sessionId={SESSION_ID} />}
+        {activeTab === 'quiz'      && <QuizScreen      level={userLevel} sessionId={SESSION_ID} />}
+        {activeTab === 'progress'  && <ProgressScreen  level={userLevel} sessionId={SESSION_ID} />}
         {activeTab === 'voice'     && <VoiceScreen     level={userLevel} />}
       </div>
 

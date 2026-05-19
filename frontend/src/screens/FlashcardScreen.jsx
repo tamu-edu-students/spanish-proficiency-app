@@ -3,7 +3,7 @@ import axios from 'axios'
 
 const API = 'http://127.0.0.1:8000/api'
 
-function FlashcardScreen({ level }) {
+function FlashcardScreen({ level, sessionId }) {
   const [cards, setCards]               = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [flipped, setFlipped]           = useState(false)
@@ -18,7 +18,6 @@ function FlashcardScreen({ level }) {
     'sports', 'technology', 'shopping', 'health'
   ]
 
-  // ── Generate cards from Gemini ──────────────────────────────
   async function generateCards() {
     setLoading(true)
     setDone(false)
@@ -30,18 +29,26 @@ function FlashcardScreen({ level }) {
       const response = await axios.post(`${API}/flashcards/`, {
         topic:      topic,
         level:      level,
-        session_id: 'user_001'
+        session_id: sessionId
       })
       setCards(response.data.cards)
 
-      // ── Track activity in localStorage ──
-      const activities = JSON.parse(localStorage.getItem('activities') || '[]')
-      activities.unshift({
-        label: 'Flashcard session',
-        color: '#1D9E75',
-        time:  new Date().toISOString()
-      })
-      localStorage.setItem('activities', JSON.stringify(activities.slice(0, 10)))
+      // Track activity (once per 5 minutes)
+      const activities      = JSON.parse(localStorage.getItem('activities') || '[]')
+      const lastActivity    = activities[0]
+      const fiveMinutesAgo  = new Date(Date.now() - 5 * 60 * 1000)
+      const recentFlashcard = lastActivity &&
+        lastActivity.label === 'Flashcard session' &&
+        new Date(lastActivity.time) > fiveMinutesAgo
+
+      if (!recentFlashcard) {
+        activities.unshift({
+          label: 'Flashcard session',
+          color: '#1D9E75',
+          time:  new Date().toISOString()
+        })
+        localStorage.setItem('activities', JSON.stringify(activities.slice(0, 10)))
+      }
 
     } catch (error) {
       console.error('Error generating cards:', error)
@@ -51,25 +58,23 @@ function FlashcardScreen({ level }) {
     }
   }
 
-  // ── Rate a card ──────────────────────────────────────────────
   async function rateCard(rating) {
     setScore(prev => ({ ...prev, [rating]: prev[rating] + 1 }))
 
-    // If user knew the word — save it as learned
     if (rating === 'good') {
       try {
-        const current  = parseInt(localStorage.getItem('wordsLearned') || '0')
+        // Get current words_learned from DB (not localStorage)
+        const progressRes = await axios.get(`${API}/progress/get/?session_id=${sessionId}`)
+        const current  = progressRes.data.words_learned || 0
         const newCount = current + 1
-        localStorage.setItem('wordsLearned', newCount.toString())
 
         const r = await axios.post(`${API}/progress/`, {
-          session_id:    'user_001',
+          session_id:    sessionId,
           words_learned: newCount
         })
 
-        // Check if user leveled up
         if (r.data.level_up) {
-          alert(`🎉 ¡Felicidades! You leveled up from ${r.data.old_level} to ${r.data.progress.level}!`)
+          alert(`Felicidades! You leveled up from ${r.data.old_level} to ${r.data.progress.level}!`)
         }
 
       } catch (e) {
@@ -87,15 +92,12 @@ function FlashcardScreen({ level }) {
 
   const card = cards[currentIndex]
 
-  // ── TOPIC PICKER SCREEN ──────────────────────────────────────
+  // TOPIC PICKER
   if (cards.length === 0) {
     return (
       <div style={{ padding: '20px' }}>
 
-        <p style={{
-          fontSize: '14px', color: '#666',
-          marginBottom: '16px', lineHeight: '1.5'
-        }}>
+        <p style={{ fontSize: '14px', color: '#666', marginBottom: '16px', lineHeight: '1.5' }}>
           Choose a topic and generate vocabulary cards.
           Flip each card to see the translation, then rate how well you knew it.
         </p>
@@ -103,22 +105,20 @@ function FlashcardScreen({ level }) {
         <p style={{ fontSize: '13px', fontWeight: '500', marginBottom: '8px' }}>
           Choose a topic:
         </p>
-        <div style={{
-          display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px'
-        }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
           {topics.map(t => (
             <button
               key={t}
               onClick={() => setTopic(t)}
               style={{
-                padding:     '6px 12px',
+                padding:      '6px 12px',
                 borderRadius: '20px',
-                border:      '1px solid',
-                borderColor: topic === t ? '#500000' : '#e0e0e0',
-                background:  topic === t ? '#500000' : '#fff',
-                color:       topic === t ? '#fff'    : '#666',
-                fontSize:    '12px',
-                cursor:      'pointer'
+                border:       '1px solid',
+                borderColor:  topic === t ? '#500000' : '#e0e0e0',
+                background:   topic === t ? '#500000' : '#fff',
+                color:        topic === t ? '#fff'    : '#666',
+                fontSize:     '12px',
+                cursor:       'pointer'
               }}
             >
               {t}
@@ -134,9 +134,13 @@ function FlashcardScreen({ level }) {
           onChange={e => setTopic(e.target.value)}
           placeholder="e.g. animals, colors, emotions..."
           style={{
-            width: '100%', padding: '10px 14px',
-            border: '1px solid #e0e0e0', borderRadius: '10px',
-            fontSize: '14px', marginBottom: '20px', outline: 'none'
+            width:        '100%',
+            padding:      '10px 14px',
+            border:       '1px solid #e0e0e0',
+            borderRadius: '10px',
+            fontSize:     '14px',
+            marginBottom: '20px',
+            outline:      'none'
           }}
         />
 
@@ -162,7 +166,7 @@ function FlashcardScreen({ level }) {
     )
   }
 
-  // ── RESULTS SCREEN ───────────────────────────────────────────
+  // RESULTS SCREEN
   if (done) {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
@@ -170,30 +174,21 @@ function FlashcardScreen({ level }) {
         <div style={{ fontSize: '40px', marginBottom: '12px' }}>🎉</div>
 
         <p style={{ fontSize: '18px', fontWeight: '500', marginBottom: '6px' }}>
-          ¡Sesión completada!
+          Sesion completada!
         </p>
         <p style={{ fontSize: '13px', color: '#666', marginBottom: '24px' }}>
           You went through all {cards.length} cards
         </p>
 
-        <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
-          gap: '10px', marginBottom: '24px'
-        }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '24px' }}>
           {[
             { label: 'Good',  value: score.good,  color: '#1D9E75', bg: '#E1F5EE' },
             { label: 'Hard',  value: score.hard,  color: '#854F0B', bg: '#FAEEDA' },
             { label: 'Again', value: score.again, color: '#A32D2D', bg: '#FCEBEB' },
           ].map(s => (
-            <div key={s.label} style={{
-              background: s.bg, borderRadius: '10px', padding: '12px'
-            }}>
-              <div style={{ fontSize: '22px', fontWeight: '600', color: s.color }}>
-                {s.value}
-              </div>
-              <div style={{ fontSize: '12px', color: s.color }}>
-                {s.label}
-              </div>
+            <div key={s.label} style={{ background: s.bg, borderRadius: '10px', padding: '12px' }}>
+              <div style={{ fontSize: '22px', fontWeight: '600', color: s.color }}>{s.value}</div>
+              <div style={{ fontSize: '12px', color: s.color }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -223,15 +218,12 @@ function FlashcardScreen({ level }) {
     )
   }
 
-  // ── MAIN CARD VIEW ───────────────────────────────────────────
+  // MAIN CARD VIEW
   return (
     <div style={{ padding: '16px' }}>
 
       {/* Progress indicator */}
-      <div style={{
-        display: 'flex', justifyContent: 'space-between',
-        alignItems: 'center', marginBottom: '8px'
-      }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <span style={{ fontSize: '13px', color: '#666' }}>
           {currentIndex + 1} of {cards.length}
         </span>
@@ -241,16 +233,11 @@ function FlashcardScreen({ level }) {
       </div>
 
       {/* Progress bar */}
-      <div style={{
-        height: '4px', background: '#e0e0e0',
-        borderRadius: '2px', marginBottom: '20px'
-      }}>
+      <div style={{ height: '4px', background: '#e0e0e0', borderRadius: '2px', marginBottom: '20px' }}>
         <div style={{
-          height:       '4px',
-          borderRadius: '2px',
-          background:   '#500000',
-          width:        `${((currentIndex + 1) / cards.length) * 100}%`,
-          transition:   'width 0.3s ease'
+          height: '4px', borderRadius: '2px', background: '#500000',
+          width: `${((currentIndex + 1) / cards.length) * 100}%`,
+          transition: 'width 0.3s ease'
         }} />
       </div>
 
@@ -258,19 +245,11 @@ function FlashcardScreen({ level }) {
       <div
         onClick={() => setFlipped(!flipped)}
         style={{
-          background:    '#fff',
-          border:        '1px solid #e0e0e0',
-          borderRadius:  '16px',
-          padding:       '40px 24px',
-          textAlign:     'center',
-          minHeight:     '200px',
-          display:       'flex',
-          flexDirection: 'column',
-          alignItems:    'center',
-          justifyContent: 'center',
-          cursor:        'pointer',
-          marginBottom:  '16px',
-          transition:    'background 0.2s'
+          background: '#fff', border: '1px solid #e0e0e0', borderRadius: '16px',
+          padding: '40px 24px', textAlign: 'center', minHeight: '200px',
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          justifyContent: 'center', cursor: 'pointer', marginBottom: '16px',
+          transition: 'background 0.2s'
         }}
       >
         {!flipped ? (
@@ -278,9 +257,7 @@ function FlashcardScreen({ level }) {
             <p style={{ fontSize: '28px', fontWeight: '600', color: '#333', marginBottom: '8px' }}>
               {card.word}
             </p>
-            <p style={{ fontSize: '13px', color: '#999' }}>
-              Tap to see translation
-            </p>
+            <p style={{ fontSize: '13px', color: '#999' }}>Tap to see translation</p>
           </>
         ) : (
           <>
@@ -292,10 +269,7 @@ function FlashcardScreen({ level }) {
             </p>
             {card.example && (
               <>
-                <div style={{
-                  height: '1px', background: '#e0e0e0',
-                  width: '60%', marginBottom: '12px'
-                }} />
+                <div style={{ height: '1px', background: '#e0e0e0', width: '60%', marginBottom: '12px' }} />
                 <p style={{ fontSize: '13px', color: '#666', fontStyle: 'italic', lineHeight: '1.5' }}>
                   "{card.example}"
                 </p>
@@ -317,21 +291,14 @@ function FlashcardScreen({ level }) {
               key={btn.rating}
               onClick={() => rateCard(btn.rating)}
               style={{
-                flex:         1,
-                padding:      '12px 6px',
-                background:   btn.bg,
-                border:       `1px solid ${btn.border}`,
-                borderRadius: '12px',
-                color:        btn.color,
-                fontSize:     '13px',
-                fontWeight:   '500',
-                cursor:       'pointer'
+                flex: 1, padding: '12px 6px',
+                background: btn.bg, border: `1px solid ${btn.border}`,
+                borderRadius: '12px', color: btn.color,
+                fontSize: '13px', fontWeight: '500', cursor: 'pointer'
               }}
             >
               <div>{btn.label}</div>
-              <div style={{ fontSize: '11px', fontWeight: '400', marginTop: '2px' }}>
-                {btn.hint}
-              </div>
+              <div style={{ fontSize: '11px', fontWeight: '400', marginTop: '2px' }}>{btn.hint}</div>
             </button>
           ))}
         </div>

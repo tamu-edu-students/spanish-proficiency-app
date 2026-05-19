@@ -34,8 +34,11 @@ body {
 }
 
 .app-title {
-  font-size: 18px;
-  font-weight: 600;
+  font-family: 'Oswald', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .level-select {
@@ -48,6 +51,10 @@ body {
   cursor: pointer;
 }
 
+.level-select option {
+  background: #fff;
+  color: #333;
+}
 /* Screen content */
 .screen-area {
   flex: 1;
@@ -55,26 +62,28 @@ body {
   background: #f8f8f8;
 }
 
-/* Bottom tab bar on mobile */
+/* ── Bottom tab bar on mobile ── */
 .tab-bar {
   display: flex;
   flex-direction: row;
   background: #fff;
   border-top: 1px solid #e0e0e0;
   flex-shrink: 0;
+  order: 999;
 }
 
 .tab-btn {
   flex: 1;
-  padding: 12px 4px;
+  padding: 10px 4px 8px;
   border: none;
   background: transparent;
-  font-size: 12px;
+  font-size: 11px;
   color: #888;
   cursor: pointer;
   border-top: 3px solid transparent;
   transition: all 0.15s;
   text-align: center;
+  line-height: 1.3;
 }
 
 .tab-btn.active {
@@ -84,8 +93,10 @@ body {
 }
 
 /* Hidden on mobile */
+.sidebar-logo  { display: none; }
 .sidebar-title { display: none; }
 .sidebar-level { display: none; }
+.sidebar-user  { display: none; }
 
 /* ══════════════════════════════
    DESKTOP LAYOUT (900px+)
@@ -119,37 +130,132 @@ body {
     background: #fff;
   }
 
-  /* Hide mobile header */
+  /* Hide mobile header on desktop */
   .header { display: none; }
 
-  /* Left sidebar */
+  /* ── Left sidebar ── */
   .tab-bar {
     flex-direction: column;
-    width: 220px;
-    min-width: 220px;
+    width: 260px;
+    min-width: 260px;
     border-top: none;
     border-right: 1px solid #e8e8e8;
     background: #fff;
     justify-content: flex-start;
     padding: 0;
     overflow-y: auto;
+    order: 0;
   }
 
-  /* Show sidebar brand */
+  /* TAMU logo block */
+  .sidebar-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #500000;
+    padding: 20px 16px 16px;
+  }
+
+  .sidebar-logo img {
+    height: 72px;
+    width: auto;
+    display: block;
+  }
+
+  /* App name */
   .sidebar-title {
     display: block;
-    font-size: 20px;
+    font-family: 'Oswald', sans-serif;
+    font-size: 22px;
     font-weight: 700;
     color: #500000;
-    padding: 28px 24px 12px;
+    text-align: center;
+    padding: 14px 24px 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-bottom: 1px solid #f0e8e8;
   }
 
-  /* Show level selector in sidebar */
+  /* ── User badge ── */
+  .sidebar-user {
+    display: block;
+    padding: 12px 16px;
+    background: #faf8f8;
+    border-bottom: 1px solid #ecdede;
+  }
+
+  .dev-badge {
+    display: inline-block;
+    background: #500000;
+    color: #fff;
+    font-family: 'Oswald', sans-serif;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin-bottom: 6px;
+  }
+
+  .user-label {
+    font-family: 'Open Sans', sans-serif;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #999;
+    margin-bottom: 4px;
+  }
+
+  .user-name {
+    font-family: 'Open Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: #500000;
+  }
+
+  .user-email {
+    font-family: 'Open Sans', sans-serif;
+    font-size: 11px;
+    color: #888;
+    margin-top: 2px;
+    margin-bottom: 8px;
+  }
+
+  .signout-btn {
+    width: 100%;
+    background: transparent;
+    color: #500000;
+    border: 1px solid #c8a0a0;
+    padding: 5px 12px;
+    font-size: 10px;
+    font-family: 'Oswald', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.15s;
+  }
+
+  .signout-btn:hover {
+    background: #f5e8e8;
+  }
+
+  /* Level selector */
   .sidebar-level {
     display: block;
-    padding: 0 16px 20px;
+    padding: 14px 16px 16px;
     border-bottom: 1px solid #e8e8e8;
-    margin-bottom: 12px;
+  }
+
+  .sidebar-level-label {
+    display: block;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #999;
+    margin-bottom: 6px;
   }
 
   .sidebar-level select {
@@ -157,14 +263,14 @@ body {
     background: #f9f0f0;
     color: #500000;
     border: 1.5px solid #c8a0a0;
-    border-radius: 10px;
+    border-radius: 8px;
     padding: 8px 12px;
     font-size: 13px;
     cursor: pointer;
     outline: none;
   }
 
-  /* Desktop tab buttons */
+  /* Desktop nav buttons */
   .tab-btn {
     flex: none;
     width: 100%;
@@ -179,7 +285,7 @@ body {
   }
 
   .tab-btn:hover {
-    background: #f5f5ff;
+    background: #fdf5f5;
     color: #500000;
   }
 
