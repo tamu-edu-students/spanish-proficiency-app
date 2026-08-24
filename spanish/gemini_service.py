@@ -210,6 +210,8 @@ CRITICAL RULES:
 - Each question must test a DIFFERENT grammar point
 - The 4 options must all be DIFFERENT words within each question
 - Only ONE option is correct per question
+- The correct answer must be placed randomly among A/B/C/D positions, not always first
+- Do NOT make the correct answer always option A
 - All {count} sentences must be completely different from each other
 
 Level guidance:

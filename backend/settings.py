@@ -84,7 +84,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'en-US'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
@@ -95,9 +95,18 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
 # ── CORS ──────────────────────────────────────────────────────
+FRONTEND_ORIGIN = os.getenv('FRONTEND_ORIGIN', 'http://localhost:5173')
+
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
+    FRONTEND_ORIGIN,
 ]
+
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\\.trycloudflare\\.com$",
+    r"^https://.*\\.ngrok-free\\.app$",
+]
+
 CORS_ALLOW_CREDENTIALS = True
 
 # ── Session cookies ───────────────────────────────────────────
@@ -109,7 +118,7 @@ SESSION_COOKIE_HTTPONLY = True
 CAS_SERVER_URL        = 'https://cas.tamu.edu/cas/'
 
 # Where to go after login/logout
-CAS_REDIRECT_URL      = 'http://localhost:5173'
+CAS_REDIRECT_URL      = os.getenv('CAS_REDIRECT_URL', FRONTEND_ORIGIN)
 CAS_LOGOUT_COMPLETELY = True
 
 # Automatically create Django user on first CAS login

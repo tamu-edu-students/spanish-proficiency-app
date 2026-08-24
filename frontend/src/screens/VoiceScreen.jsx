@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import axios from 'axios'
 
-const API = 'http://127.0.0.1:8000/api'
+const API = '/api'
 
 function VoiceScreen({ level }) {
   const [status, setStatus]         = useState('Tap the mic to start')
@@ -44,7 +44,9 @@ function VoiceScreen({ level }) {
         })
         localStorage.setItem('activities', JSON.stringify(activities.slice(0, 10)))
       }
-    } catch (e) {}
+    } catch {
+      return
+    }
   }
 
   // Strip bracketed English text before speaking
@@ -99,14 +101,14 @@ function VoiceScreen({ level }) {
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SpeechRecognition) {
-      setStatus('Speech not supported. Use Chrome or Edge.')
+      window.setTimeout(() => setStatus('Speech not supported. Use Chrome or Edge.'), 0)
       return
     }
 
     const recognition = new SpeechRecognition()
     recognition.continuous     = false
     recognition.interimResults = true
-    recognition.lang           = 'en-US'
+    recognition.lang           = 'es-MX'
 
     recognition.onstart = () => {
       console.log('Recognition started')
@@ -152,7 +154,7 @@ function VoiceScreen({ level }) {
 
     return () => {
       listeningRef.current = false
-      try { recognition.abort() } catch (e) {}
+      try { recognition.abort() } catch { return }
     }
   }, [])
 
@@ -183,7 +185,7 @@ function VoiceScreen({ level }) {
     listeningRef.current = false
     setListening(false)
 
-    try { recognitionRef.current.stop() } catch (e) {}
+    try { recognitionRef.current.stop() } catch { return }
 
     setTimeout(() => {
       const fullText = accumulatedRef.current.trim()

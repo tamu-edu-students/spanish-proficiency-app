@@ -7,8 +7,7 @@ import ProgressScreen  from './screens/ProgressScreen'
 import VoiceScreen     from './screens/VoiceScreen'
 import './App.css'
 
-const API     = 'http://127.0.0.1:8000/api'
-const BACKEND = 'http://127.0.0.1:8000'
+const API = '/api'
 
 const LEVELS = [
   { value: 'A1', label: 'A1 - Beginner'          },
@@ -17,13 +16,27 @@ const LEVELS = [
   { value: 'B2', label: 'B2 - Upper Intermediate' },
 ]
 
-const TABS = [
-  { key: 'chat',      label: 'Chat'     },
-  { key: 'flashcard', label: 'Tarjetas' },
-  { key: 'quiz',      label: 'Quiz'     },
-  { key: 'progress',  label: 'Progreso' },
-  { key: 'voice',     label: 'Voz'      },
-]
+const TAB_LABELS = {
+  en: {
+    chat: 'Chat',
+    flashcard: 'Cards',
+    quiz: 'Quiz',
+    progress: 'Progress',
+    voice: 'Voice',
+  },
+  es: {
+    chat: 'Chat',
+    flashcard: 'Tarjetas',
+    quiz: 'Prueba',
+    progress: 'Progreso',
+    voice: 'Voz',
+  },
+}
+
+const LANGUAGE_TOGGLE_LABELS = {
+  en: 'English',
+  es: 'Español',
+}
 
 function LevelSelect({ value, onChange, disabled }) {
   return (
@@ -61,8 +74,10 @@ function App() {
   const [userLevel, setUserLevel]       = useState('A1')
   const [user, setUser]                 = useState(null)
   const [checkingAuth, setCheckingAuth] = useState(true)
+  const [labelLanguage, setLabelLanguage] = useState('en')
 
   const levelLocked = activeTab === 'voice'
+  const tabLabels = TAB_LABELS[labelLanguage] || TAB_LABELS.en
 
   useEffect(() => {
     checkAuth()
@@ -79,7 +94,7 @@ function App() {
     try {
       const response = await axios.get(`${API}/me/`, { withCredentials: true })
       setUser(response.data)
-    } catch (e) {
+    } catch {
       setUser(null)
     } finally {
       setCheckingAuth(false)
@@ -87,11 +102,11 @@ function App() {
   }
 
   function login() {
-    window.location.href = `${BACKEND}/accounts/login/?next=/`
+    window.location.href = '/accounts/login/?next=/'
   }
 
   function logout() {
-    window.location.href = `${BACKEND}/accounts/logout/`
+    window.location.href = '/accounts/logout/'
   }
 
   function updateStreak() {
@@ -135,7 +150,7 @@ function App() {
             style={{ height: '60px', display: 'block', margin: '0 auto 20px', filter: 'brightness(0) invert(1)' }}
           />
           <p style={{ fontFamily: "'Oswald', sans-serif", fontSize: '16px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.8)' }}>
-            Loading EspanolAI...
+            Loading EspañolAI...
           </p>
         </div>
       </div>
@@ -153,7 +168,7 @@ function App() {
             style={{ height: '50px', marginBottom: '12px' }}
           />
           <p style={{ fontFamily: "'Oswald', sans-serif", fontSize: '26px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#500000', marginBottom: '8px' }}>
-            EspanolAI
+            EspañolAI
           </p>
           <p style={{ fontFamily: "'Open Sans', sans-serif", fontSize: '13px', color: '#707070', marginBottom: '32px', lineHeight: '1.6' }}>
             AI-powered Spanish tutor for Texas A&M students. Sign in with your TAMU NetID to get started.
@@ -181,7 +196,7 @@ function App() {
 
       {/* Mobile header */}
       <div className="header">
-        <span className="app-title">EspanolAI</span>
+        <span className="app-title">EspañolAI</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: levelLocked ? '12px' : '0' }}>
           <LevelSelect value={userLevel} onChange={setUserLevel} disabled={levelLocked} />
           {!user.dev_mode && (
@@ -202,7 +217,27 @@ function App() {
           <img src="https://aux.tamu.edu/logos/boxTAM.svg" alt="Texas A&M University" />
         </div>
 
-        <div className="sidebar-title">EspanolAI</div>
+        <div className="sidebar-title">EspañolAI</div>
+
+        <div className="sidebar-language">
+          <span className="sidebar-level-label">Labels</span>
+          <div className="language-toggle">
+            <button
+              type="button"
+              className={labelLanguage === 'en' ? 'language-toggle-btn active' : 'language-toggle-btn'}
+              onClick={() => setLabelLanguage('en')}
+            >
+              English
+            </button>
+            <button
+              type="button"
+              className={labelLanguage === 'es' ? 'language-toggle-btn active' : 'language-toggle-btn'}
+              onClick={() => setLabelLanguage('es')}
+            >
+              Español
+            </button>
+          </div>
+        </div>
 
         {/* User info - desktop only */}
         <div className="sidebar-user">
@@ -228,13 +263,13 @@ function App() {
           <LevelSelect value={userLevel} onChange={setUserLevel} disabled={levelLocked} />
         </div>
 
-        {TABS.map(tab => (
+        {Object.keys(tabLabels).map(tabKey => (
           <button
-            key={tab.key}
-            className={`tab-btn ${activeTab === tab.key ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.key)}
+            key={tabKey}
+            className={`tab-btn ${activeTab === tabKey ? 'active' : ''}`}
+            onClick={() => setActiveTab(tabKey)}
           >
-            {tab.label}
+            {tabLabels[tabKey]}
           </button>
         ))}
       </div>

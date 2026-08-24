@@ -248,6 +248,12 @@ body {
     border-bottom: 1px solid #e8e8e8;
   }
 
+  .sidebar-language {
+    display: block;
+    padding: 14px 16px 0;
+    border-bottom: 1px solid #e8e8e8;
+  }
+
   .sidebar-level-label {
     display: block;
     font-family: 'Open Sans', sans-serif;
@@ -256,6 +262,38 @@ body {
     letter-spacing: 0.1em;
     color: #999;
     margin-bottom: 6px;
+  }
+
+  .language-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .language-toggle-btn {
+    flex: 1;
+    background: #fff;
+    color: #666;
+    border: 1px solid #d9c5c5;
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 11px;
+    font-family: 'Oswald', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .language-toggle-btn:hover {
+    background: #fdf5f5;
+    color: #500000;
+  }
+
+  .language-toggle-btn.active {
+    background: #500000;
+    color: #fff;
+    border-color: #500000;
   }
 
   .sidebar-level select {

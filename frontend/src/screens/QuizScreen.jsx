@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import axios from 'axios'
 
-const API     = 'http://127.0.0.1:8000/api'
+const API     = '/api'
 const TOTAL_Q = 10
 
 function QuizScreen({ level, sessionId }) {
@@ -12,9 +12,20 @@ function QuizScreen({ level, sessionId }) {
   const [sessionScore, setSessionScore] = useState(0)
   const [quizDone, setQuizDone]         = useState(false)
   const [loading, setLoading]           = useState(false)
-  const [loadingMsg, setLoadingMsg]     = useState('')
 
   const currentQuestion = questions[questionNum - 1] || null
+
+  function shuffleQuestionOptions(question) {
+    if (!question || !Array.isArray(question.options)) return question
+
+    const options = [...question.options]
+    for (let i = options.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[options[i], options[j]] = [options[j], options[i]]
+    }
+
+    return { ...question, options }
+  }
 
   function trackQuizActivity() {
     const activities     = JSON.parse(localStorage.getItem('activities') || '[]')
@@ -31,7 +42,6 @@ function QuizScreen({ level, sessionId }) {
 
   async function startQuiz() {
     setLoading(true)
-    setLoadingMsg('Preparing your quiz...')
     setSessionScore(0)
     setQuizDone(false)
     setSelected(null)
@@ -42,7 +52,7 @@ function QuizScreen({ level, sessionId }) {
       const response = await axios.post(`${API}/quiz/batch/`, { level, count: TOTAL_Q })
       const qs = response.data.questions
       if (!qs || qs.length === 0) throw new Error('No questions returned')
-      setQuestions(qs)
+      setQuestions(qs.map(shuffleQuestionOptions))
       setQuestionNum(1)
     } catch (error) {
       console.error('Error loading quiz:', error)
