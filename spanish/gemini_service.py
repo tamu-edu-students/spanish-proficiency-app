@@ -244,43 +244,287 @@ No text before or after the JSON array."""
 
 
 def generate_reading_quiz(level="B1", count=5):
-        """Generate one level-appropriate Spanish passage with reading questions."""
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        prompt = f"""Create one Spanish reading-comprehension passage and exactly {count} multiple-choice questions for CEFR level {level}.
+    """Generate an academic Spanish reading-comprehension passage with assessment-style questions."""
 
-Level guidance:
-- A1: 60-80 words, very simple present-tense vocabulary
-- A2: 90-120 words, everyday vocabulary and simple past/future
-- B1: 140-180 words, connected paragraphs and varied verb tenses
-- B2: 200-250 words, nuanced ideas, idioms, and advanced grammar
+    client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
-Rules:
-- The passage must be original and factually consistent.
-- Every question must be answerable from the passage.
-- Each question must have exactly 4 distinct options and exactly 1 correct answer.
-- Spread correct answers across A, B, C, and D positions; do not always use the first option.
-- Do not include trick questions or answers that are not supported by the passage.
+    prompt = f"""
+You are an expert Spanish-language assessment writer specializing in
+academic reading comprehension and language-proficiency assessments.
 
-Return ONLY valid JSON, with no markdown or extra text:
+Create ONE original Spanish reading-comprehension passage and exactly {count}
+multiple-choice questions for a learner at CEFR level {level}.
+
+The goal is NOT simply to test whether the learner can locate obvious facts.
+The activity should resemble a formal academic language-proficiency assessment
+in which the learner must understand, interpret, infer, and critically evaluate
+a written text.
+
+PASSAGE REQUIREMENTS
+--------------------
+
+Create an ORIGINAL, self-contained Spanish passage written in a formal,
+academic or informational register.
+
+The passage should resemble the kind of authentic written material that could
+appear in an educational, cultural, scientific, historical, social, or
+professional context.
+
+Possible genres include:
+- educational or explanatory article
+- short biography
+- historical or cultural article
+- science or environmental article
+- social or community issue
+- informational magazine article
+- school-related article
+- cultural commentary
+- short opinion/informational piece
+
+Do NOT write a fictional story unless the topic naturally requires a
+narrative/biographical format.
+
+The passage should:
+- develop a clear central idea
+- contain multiple connected paragraphs
+- include supporting details, examples, explanations, or evidence
+- require the reader to connect information across sentences or paragraphs
+- contain some information that must be inferred rather than directly stated
+- use natural academic Spanish appropriate for the CEFR level
+- avoid sounding like a language textbook exercise
+- avoid overly simple sentence-by-sentence exposition
+- avoid artificial repetition of the same vocabulary
+- remain factually consistent within the passage
+
+CEFR LEVEL GUIDANCE
+-------------------
+
+A1:
+- 80-120 words
+- very familiar topics
+- simple sentence structures
+- basic vocabulary
+- mostly explicit information
+- limited inference
+
+A2:
+- 120-160 words
+- familiar educational, cultural, social, or everyday topics
+- connected paragraphs
+- some past/future forms
+- simple explanations and relationships
+- mostly literal comprehension with a small amount of inference
+
+B1:
+- 180-250 words
+- 3-5 connected paragraphs
+- informative or academic topic
+- varied verb tenses
+- moderately sophisticated vocabulary
+- relationships between ideas
+- some implied meaning
+- basic analysis of purpose, tone, or conclusions
+
+B2:
+- 250-350 words
+- 4-6 well-developed paragraphs
+- academic, cultural, scientific, historical, or social topic
+- nuanced arguments or explanations
+- advanced but natural vocabulary
+- cohesive devices and varied sentence structures
+- information distributed across the passage
+- meaningful inference, interpretation, tone, purpose, and point-of-view questions
+
+QUESTION DESIGN
+---------------
+
+Generate exactly {count} questions.
+
+The questions should collectively assess a variety of reading skills.
+
+Use a mixture of the following question types:
+
+1. Literal comprehension
+   - stated details
+   - sequence
+   - specific information
+
+2. Main idea / central theme
+   - What is the central idea?
+   - Which statement best summarizes the passage?
+
+3. Inference
+   - What can be inferred?
+   - What is most likely true based on the passage?
+   - What can be deduced from the author's statements?
+
+4. Interpretation
+   - What does a statement imply?
+   - Why does the author mention a particular example?
+   - What does a particular detail suggest?
+
+5. Author's purpose
+   - What is the purpose of the text?
+   - Why was the text most likely written?
+
+6. Tone / attitude
+   - What is the tone of the passage?
+   - How does the author present the topic?
+
+7. Point of view
+   - What perspective does the author take?
+   - Which statement best reflects the author's position?
+
+8. Cause and effect
+   - What relationship between two events or ideas is suggested?
+
+9. Supporting evidence
+   - Which statement is supported by the passage?
+
+10. Vocabulary in context
+   - What does a word or expression most nearly mean in context?
+   - Do NOT ask for dictionary definitions unrelated to the passage.
+
+11. Text organization
+   - What function does a paragraph or example serve?
+   - How does a particular section contribute to the development of the text?
+
+12. Application / conclusion
+   - Based on the passage, what is most likely to happen or be true?
+
+QUESTION DISTRIBUTION
+---------------------
+
+Do not make every question a simple factual-recall question.
+
+For {count} questions:
+- At least 1 question must test inference or deduction.
+- At least 1 question must test main idea, purpose, tone, or point of view.
+- At least 1 question must require understanding information from more than
+  one part of the passage.
+- The remaining questions may test literal comprehension, vocabulary,
+  supporting evidence, cause/effect, or interpretation.
+
+Question wording should resemble formal assessment language.
+
+Useful Spanish question stems include:
+
+- ¿Cuál es la idea principal del texto?
+- ¿Cuál de las siguientes afirmaciones coincide con el contenido del texto?
+- ¿Qué se puede inferir del texto?
+- ¿Qué se puede deducir acerca de...?
+- Según el texto, ¿cuál es la razón más probable por la que...?
+- ¿Cuál es el propósito del texto?
+- ¿Cuál es el tono del texto?
+- ¿Qué sugiere el autor al afirmar que...?
+- ¿Qué función cumple el ejemplo de...?
+- ¿Cuál de las siguientes opciones explica mejor...?
+- Según el texto, ¿qué consecuencia es más probable?
+- En el contexto del segundo párrafo, ¿qué significa...?
+
+Do not use the same question stem repeatedly.
+
+ANSWER CHOICE DESIGN
+--------------------
+
+Each question must have exactly 4 options.
+
+There must be exactly ONE defensible correct answer.
+
+The three incorrect options must be plausible and related to the passage.
+
+Create distractors using realistic assessment strategies:
+- information mentioned elsewhere in the passage
+- partially correct interpretations
+- conclusions that go beyond the evidence
+- details that are true but do not answer the question
+- plausible misunderstandings of the author's argument
+
+Do NOT create silly, obviously incorrect, or unrelated distractors.
+
+Do NOT make the correct answer consistently longer, more specific,
+more sophisticated, or grammatically different from the distractors.
+
+Do not use "all of the above" or "none of the above."
+
+Do not use trick questions.
+
+Do not require outside knowledge to answer a question.
+
+ANSWER VALIDATION
+-----------------
+
+Before returning the result, internally verify every question:
+
+1. Is the correct answer directly supported or logically inferable from
+   the passage?
+2. Are the three distractors incorrect based on the passage?
+3. Could a reasonable reader argue that another option is correct?
+4. Does the question actually test the intended reading skill?
+5. Is the answer based on the passage rather than outside knowledge?
+
+If any question fails these checks, rewrite it.
+
+ANSWER POSITION DISTRIBUTION
+----------------------------
+
+Distribute correct answers across A, B, C, and D.
+
+Do not repeatedly place the correct answer in the same position.
+
+For example, for 5 questions, a distribution such as:
+B, D, A, C, B
+is preferable to:
+A, A, A, A, A.
+
+EXPLANATIONS
+------------
+
+For every question, provide a brief explanation in Spanish.
+
+The explanation must:
+- identify why the correct answer is supported
+- refer to the relevant idea or evidence in the passage
+- explain briefly why the reasoning is valid
+
+Do not simply repeat the correct option.
+
+OUTPUT FORMAT
+-------------
+
+Return ONLY valid JSON. No markdown. No introductory text.
+
+Use exactly this structure:
+
 {{
-    "passage": "The complete Spanish passage",
+    "passage": "Complete Spanish passage",
     "questions": [
         {{
-            "question": "A question about the passage",
-            "options": ["option 1", "option 2", "option 3", "option 4"],
-            "answer": "the exact correct option",
-            "explanation": "Brief explanation in Spanish based on the passage"
+            "question": "Question in Spanish",
+            "type": "inference",
+            "options": [
+                "Option A",
+                "Option B",
+                "Option C",
+                "Option D"
+            ],
+            "answer": "Exact correct option text",
+            "explanation": "Brief explanation in Spanish based on the passage."
         }}
     ]
 }}
 """
 
-        response = client.models.generate_content(
-                model="gemini-2.5-flash-lite",
-                contents=prompt,
-                config=types.GenerateContentConfig(temperature=0.8, max_output_tokens=4000)
+    response = client.models.generate_content(
+        model="gemini-2.5-flash-lite",
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            temperature=0.7,
+            max_output_tokens=5000
         )
-        return response.text
+    )
+
+    return response.text
 
 
 def check_quiz_answer(question, user_answer, correct_answer, level="B1"):
