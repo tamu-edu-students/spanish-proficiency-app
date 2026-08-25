@@ -20,14 +20,16 @@ const TAB_LABELS = {
   en: {
     chat: 'Chat',
     flashcard: 'Cards',
-    quiz: 'Quiz',
+    quiz: 'Grammar Quiz',
+    reading: 'Reading Comprehension',
     progress: 'Progress',
     voice: 'Voice',
   },
   es: {
     chat: 'Chat',
     flashcard: 'Tarjetas',
-    quiz: 'Prueba',
+    quiz: 'Prueba de gramática',
+    reading: 'Comprensión lectora',
     progress: 'Progreso',
     voice: 'Voz',
   },
@@ -278,7 +280,8 @@ function App() {
       <div className="screen-area">
         {activeTab === 'chat'      && <ChatScreen      level={userLevel} sessionId={SESSION_ID} />}
         {activeTab === 'flashcard' && <FlashcardScreen level={userLevel} sessionId={SESSION_ID} />}
-        {activeTab === 'quiz'      && <QuizScreen      level={userLevel} sessionId={SESSION_ID} />}
+        {activeTab === 'quiz'      && <QuizScreen      level={userLevel} sessionId={SESSION_ID} quizType="grammar" />}
+        {activeTab === 'reading'  && <QuizScreen      level={userLevel} sessionId={SESSION_ID} quizType="reading" />}
         {activeTab === 'progress'  && <ProgressScreen  level={userLevel} sessionId={SESSION_ID} />}
         {activeTab === 'voice'     && <VoiceScreen     level={userLevel} />}
       </div>

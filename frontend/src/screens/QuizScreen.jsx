@@ -4,7 +4,7 @@ import axios from 'axios'
 const API     = '/api'
 const TOTAL_Q = 10
 
-function QuizScreen({ level, sessionId }) {
+function QuizScreen({ level, sessionId, quizType = 'grammar' }) {
   const [questions, setQuestions]       = useState([])
   const [questionNum, setQuestionNum]   = useState(0)   // 0 = start screen
   const [selected, setSelected]         = useState(null)
@@ -12,8 +12,11 @@ function QuizScreen({ level, sessionId }) {
   const [sessionScore, setSessionScore] = useState(0)
   const [quizDone, setQuizDone]         = useState(false)
   const [loading, setLoading]           = useState(false)
+  const quizMode = quizType
+  const [passage, setPassage]           = useState('')
 
   const currentQuestion = questions[questionNum - 1] || null
+  const totalQuestions = quizMode === 'reading' ? 5 : TOTAL_Q
 
   function shuffleQuestionOptions(question) {
     if (!question || !Array.isArray(question.options)) return question
@@ -27,15 +30,15 @@ function QuizScreen({ level, sessionId }) {
     return { ...question, options }
   }
 
-  function trackQuizActivity() {
+  function trackQuizActivity(label = 'Grammar quiz') {
     const activities     = JSON.parse(localStorage.getItem('activities') || '[]')
     const lastActivity   = activities[0]
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
     const recentQuiz     = lastActivity &&
-      lastActivity.label === 'Grammar quiz' &&
+      lastActivity.label === label &&
       new Date(lastActivity.time) > fiveMinutesAgo
     if (!recentQuiz) {
-      activities.unshift({ label: 'Grammar quiz', color: '#EF9F27', time: new Date().toISOString() })
+      activities.unshift({ label, color: '#EF9F27', time: new Date().toISOString() })
       localStorage.setItem('activities', JSON.stringify(activities.slice(0, 10)))
     }
   }
@@ -46,6 +49,7 @@ function QuizScreen({ level, sessionId }) {
     setQuizDone(false)
     setSelected(null)
     setFeedback(null)
+    setPassage('')
     trackQuizActivity()
 
     try {
@@ -57,6 +61,31 @@ function QuizScreen({ level, sessionId }) {
     } catch (error) {
       console.error('Error loading quiz:', error)
       alert('Could not load quiz. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function startReadingQuiz() {
+    setLoading(true)
+    setSessionScore(0)
+    setQuizDone(false)
+    setSelected(null)
+    setFeedback(null)
+    trackQuizActivity('Reading comprehension')
+
+    try {
+      const response = await axios.post(`${API}/quiz/reading/`, { level, count: 5 })
+      const data = response.data
+      if (!data.passage || !Array.isArray(data.questions) || data.questions.length === 0) {
+        throw new Error('No reading quiz returned')
+      }
+      setPassage(data.passage)
+      setQuestions(data.questions.map(shuffleQuestionOptions))
+      setQuestionNum(1)
+    } catch (error) {
+      console.error('Error loading reading quiz:', error)
+      alert('Could not load the reading quiz. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -96,7 +125,7 @@ function QuizScreen({ level, sessionId }) {
   }
 
   function nextQuestion() {
-    if (questionNum >= TOTAL_Q) {
+    if (questionNum >= totalQuestions) {
       setQuizDone(true)
     } else {
       setQuestionNum(q => q + 1)
@@ -111,18 +140,19 @@ function QuizScreen({ level, sessionId }) {
       <div style={{ padding: '24px', textAlign: 'center' }}>
         <div style={{ fontSize: '48px', marginBottom: '16px' }}>📝</div>
         <p style={{ fontSize: '18px', fontWeight: '600', color: '#333', marginBottom: '8px' }}>
-          Spanish Grammar Quiz
+          {quizMode === 'reading' ? 'Spanish Reading Comprehension' : 'Spanish Grammar Quiz'}
         </p>
         <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6', marginBottom: '16px' }}>
-          Answer 10 questions. Pick the correct word to complete each sentence.
-          You will get a Spanish explanation after each answer.
+          {quizMode === 'reading'
+            ? 'Read a Spanish passage and answer 5 questions about what you read.'
+            : 'Answer 10 questions. Pick the correct word to complete each sentence.'}
         </p>
         <div style={{ display: 'inline-block', background: '#E1F5EE', color: '#085041', borderRadius: '20px', padding: '4px 14px', fontSize: '13px', marginBottom: '24px' }}>
           Level: {level}
         </div>
         <br />
         <button
-          onClick={startQuiz}
+          onClick={quizMode === 'reading' ? startReadingQuiz : startQuiz}
           style={{ padding: '14px 40px', background: '#500000', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '500', cursor: 'pointer' }}
         >
           Start Quiz
@@ -149,7 +179,7 @@ function QuizScreen({ level, sessionId }) {
 
   // SCORE SCREEN
   if (quizDone) {
-    const pct     = Math.round((sessionScore / TOTAL_Q) * 100)
+    const pct     = Math.round((sessionScore / totalQuestions) * 100)
     const emoji   = pct >= 80 ? '🎉' : pct >= 50 ? '👍' : '💪'
     const message = pct >= 80
       ? 'Excellent work! Muy bien!'
@@ -173,7 +203,7 @@ function QuizScreen({ level, sessionId }) {
           margin: '0 auto 28px'
         }}>
           <p style={{ fontSize: '32px', fontWeight: '700', color: '#333', lineHeight: 1 }}>
-            {sessionScore}/{TOTAL_Q}
+            {sessionScore}/{totalQuestions}
           </p>
           <p style={{ fontSize: '13px', color: '#666', marginTop: '4px' }}>{pct}%</p>
         </div>
@@ -184,7 +214,7 @@ function QuizScreen({ level, sessionId }) {
             <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Correct</p>
           </div>
           <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: '22px', fontWeight: '700', color: '#E24B4A' }}>{TOTAL_Q - sessionScore}</p>
+            <p style={{ fontSize: '22px', fontWeight: '700', color: '#E24B4A' }}>{totalQuestions - sessionScore}</p>
             <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Incorrect</p>
           </div>
           <div style={{ textAlign: 'center' }}>
@@ -194,7 +224,7 @@ function QuizScreen({ level, sessionId }) {
         </div>
 
         <button
-          onClick={startQuiz}
+          onClick={quizMode === 'reading' ? startReadingQuiz : startQuiz}
           style={{ width: '100%', maxWidth: '300px', padding: '14px', background: '#500000', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '500', cursor: 'pointer' }}
         >
           Practice Again
@@ -211,7 +241,7 @@ function QuizScreen({ level, sessionId }) {
       <div style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
           <span style={{ fontSize: '12px', color: '#888', fontFamily: "'Open Sans', sans-serif" }}>
-            Question {questionNum} of {TOTAL_Q}
+            Question {questionNum} of {totalQuestions}
           </span>
           <span style={{ fontSize: '12px', color: '#500000', fontWeight: '600', fontFamily: "'Open Sans', sans-serif" }}>
             {sessionScore} correct
@@ -220,13 +250,24 @@ function QuizScreen({ level, sessionId }) {
         <div style={{ height: '6px', background: '#f0e8e8', borderRadius: '3px', overflow: 'hidden' }}>
           <div style={{
             height: '100%',
-            width: `${((questionNum - 1) / TOTAL_Q) * 100}%`,
+            width: `${((questionNum - 1) / totalQuestions) * 100}%`,
             background: '#500000',
             borderRadius: '3px',
             transition: 'width 0.3s ease'
           }} />
         </div>
       </div>
+
+      {quizMode === 'reading' && (
+        <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '16px', padding: '20px', marginBottom: '16px' }}>
+          <p style={{ fontSize: '13px', color: '#500000', fontWeight: '500', marginBottom: '10px' }}>
+            Read the passage
+          </p>
+          <p style={{ fontSize: '16px', color: '#333', lineHeight: '1.7', whiteSpace: 'pre-wrap' }}>
+            {passage}
+          </p>
+        </div>
+      )}
 
       {/* Level badge */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
@@ -238,10 +279,10 @@ function QuizScreen({ level, sessionId }) {
       {/* Question card */}
       <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '16px', padding: '20px', marginBottom: '16px' }}>
         <p style={{ fontSize: '13px', color: '#500000', fontWeight: '500', marginBottom: '10px' }}>
-          Fill in the blank:
+          {quizMode === 'reading' ? 'Comprehension question:' : 'Fill in the blank:'}
         </p>
         <p style={{ fontSize: '17px', color: '#333', lineHeight: '1.6' }}>
-          {currentQuestion.sentence}
+          {quizMode === 'reading' ? currentQuestion.question : currentQuestion.sentence}
         </p>
       </div>
 
@@ -293,7 +334,7 @@ function QuizScreen({ level, sessionId }) {
           onClick={nextQuestion}
           style={{ width: '100%', padding: '14px', background: '#500000', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '500', cursor: 'pointer' }}
         >
-          {questionNum >= TOTAL_Q ? 'See Results' : 'Next Question'}
+          {questionNum >= totalQuestions ? 'See Results' : 'Next Question'}
         </button>
       )}
 

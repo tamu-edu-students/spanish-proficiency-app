@@ -243,6 +243,46 @@ No text before or after the JSON array."""
     return response.text
 
 
+def generate_reading_quiz(level="B1", count=5):
+        """Generate one level-appropriate Spanish passage with reading questions."""
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        prompt = f"""Create one Spanish reading-comprehension passage and exactly {count} multiple-choice questions for CEFR level {level}.
+
+Level guidance:
+- A1: 60-80 words, very simple present-tense vocabulary
+- A2: 90-120 words, everyday vocabulary and simple past/future
+- B1: 140-180 words, connected paragraphs and varied verb tenses
+- B2: 200-250 words, nuanced ideas, idioms, and advanced grammar
+
+Rules:
+- The passage must be original and factually consistent.
+- Every question must be answerable from the passage.
+- Each question must have exactly 4 distinct options and exactly 1 correct answer.
+- Spread correct answers across A, B, C, and D positions; do not always use the first option.
+- Do not include trick questions or answers that are not supported by the passage.
+
+Return ONLY valid JSON, with no markdown or extra text:
+{{
+    "passage": "The complete Spanish passage",
+    "questions": [
+        {{
+            "question": "A question about the passage",
+            "options": ["option 1", "option 2", "option 3", "option 4"],
+            "answer": "the exact correct option",
+            "explanation": "Brief explanation in Spanish based on the passage"
+        }}
+    ]
+}}
+"""
+
+        response = client.models.generate_content(
+                model="gemini-2.5-flash-lite",
+                contents=prompt,
+                config=types.GenerateContentConfig(temperature=0.8, max_output_tokens=4000)
+        )
+        return response.text
+
+
 def check_quiz_answer(question, user_answer, correct_answer, level="B1"):
     client = genai.Client(api_key=settings.GEMINI_API_KEY)
     is_correct = user_answer.strip().lower() == correct_answer.strip().lower()

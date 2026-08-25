@@ -154,6 +154,29 @@ def quiz_batch_view(request):
 
 
 @api_view(['POST'])
+def reading_quiz_view(request):
+    try:
+        level = request.data.get('level', 'B1')
+        count = min(int(request.data.get('count', 5)), 10)
+        raw = call_with_retry(lambda: gemini_service.generate_reading_quiz(level, count))
+
+        clean = raw.strip()
+        if clean.startswith('```'):
+            lines = clean.split('\n')
+            clean = '\n'.join(lines[1:-1])
+        payload = json.loads(clean.replace('```', '').strip())
+
+        if not isinstance(payload, dict) or not payload.get('passage') or not isinstance(payload.get('questions'), list):
+            raise ValueError('Expected a passage and question list')
+        return Response(payload)
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return Response({'error': 'Could not parse the reading quiz. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        print(f"Reading quiz error: {e}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
 def quiz_view(request):
     try:
         level = request.data.get('level', 'B1')
