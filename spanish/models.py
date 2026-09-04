@@ -53,3 +53,22 @@ class ConversationMessage(models.Model):
 
     def __str__(self):
         return f"{self.role}: {self.content[:50]}"
+
+# Graded submission (essay or oral recording)
+class Submission(models.Model):
+
+    KINDS = [('essay', 'Essay'), ('audio', 'Audio')]
+
+    session_id  = models.CharField(max_length=100)
+    kind        = models.CharField(max_length=10, choices=KINDS)
+    task        = models.JSONField(default=dict)        # the generated prompt this was graded against
+    text        = models.TextField(blank=True)          # essay text, or audio transcription
+    result      = models.JSONField()                    # full grading payload from Gemini
+    total_score = models.IntegerField(default=0)
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.kind} - {self.session_id} - {self.total_score}"

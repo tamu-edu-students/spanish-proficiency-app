@@ -1,12 +1,16 @@
 import json
-import time
+import os
 import random
+import tempfile
+import time
+from pathlib import Path
+
 from django.conf import settings
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from . import gemini_service
-from .models import UserProgress, FlashCard
+from . import gemini_service, grading_service
+from .models import UserProgress, FlashCard, Submission
 
 
 def get_or_create_progress(session_id, netid=''):
@@ -287,3 +291,104 @@ def get_progress_view(request):
     except Exception as e:
         print(f"Get progress error: {e}")
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# ── Grading (BTLPT rubric, ported from spanish-grading-app) ──────
+
+
+def _save_submission(session_id, kind, task, text, result):
+    Submission.objects.create(
+        session_id=session_id,
+        kind=kind,
+        task=task,
+        text=text,
+        result=result,
+        total_score=sum(result['scores'].values()),
+    )
+
+
+@api_view(['POST'])
+def grade_prompt_view(request):
+    """Generate a fresh task prompt for the student's level."""
+    kind = request.data.get('kind', 'essay')
+    if kind not in ('essay', 'audio'):
+        return Response({'error': 'kind must be essay or audio'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        level = request.data.get('level', 'B1')
+        return Response(call_with_retry(lambda: grading_service.service.generate_task(kind, level)))
+    except Exception as e:
+        print(f"Prompt generation error: {e}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+def _task_from(request):
+    """The prompt the student actually answered, echoed back by the client."""
+    spanish = (request.data.get('task_spanish') or '').strip()
+    english = (request.data.get('task_english') or '').strip()
+    return {'spanish': spanish, 'english': english} if spanish else None
+
+
+@api_view(['POST'])
+def grade_essay_view(request):
+    try:
+        essay = (request.data.get('essay') or '').strip()
+        if not essay:
+            return Response({'error': 'No essay provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        task = _task_from(request)
+        result = call_with_retry(lambda: grading_service.service.grade_essay(essay, task))
+        _save_submission(get_session_id(request), 'essay', task or {}, essay, result)
+        return Response(result)
+
+    except Exception as e:
+        print(f"Essay grading error: {e}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+def grade_audio_view(request):
+    upload = request.FILES.get('audio')
+    if not upload:
+        return Response({'error': 'No audio file provided'}, status=status.HTTP_400_BAD_REQUEST)
+    if upload.size > 25 * 1024 * 1024:
+        return Response({'error': 'Audio file too large (max 25 MB)'}, status=status.HTTP_400_BAD_REQUEST)
+
+    suffix = Path(upload.name).suffix.lower()
+    if suffix not in grading_service.MIME_TYPES:
+        return Response(
+            {'error': f"Unsupported audio format. Use: {', '.join(grading_service.MIME_TYPES)}"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # ponytail: audio is graded then discarded — only the transcription is kept.
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        for chunk in upload.chunks():
+            tmp.write(chunk)
+        tmp_path = tmp.name
+    try:
+        task = _task_from(request)
+        result = call_with_retry(lambda: grading_service.service.grade_audio(tmp_path, task))
+        _save_submission(get_session_id(request), 'audio', task or {}, result['transcription'], result)
+        return Response(result)
+    except Exception as e:
+        print(f"Audio grading error: {e}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    finally:
+        os.unlink(tmp_path)
+
+
+@api_view(['GET'])
+def submissions_view(request):
+    subs = Submission.objects.filter(session_id=get_session_id(request))
+    kind = request.query_params.get('kind')
+    if kind:
+        subs = subs.filter(kind=kind)
+    subs = subs[:20]
+    return Response({'submissions': [{
+        'id':          s.id,
+        'kind':        s.kind,
+        'task':        s.task,
+        'text':        s.text,
+        'result':      s.result,
+        'total_score': s.total_score,
+        'created_at':  s.created_at.isoformat(),
+    } for s in subs]})

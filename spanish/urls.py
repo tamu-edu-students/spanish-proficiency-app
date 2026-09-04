@@ -11,6 +11,12 @@ urlpatterns = [
     path('progress/',     views.progress_view,       name='progress'),
     path('progress/get/', views.get_progress_view,  name='get_progress'),
 
+    # ── Grading ───────────────────────────────────────────────
+    path('grade/prompt/', views.grade_prompt_view,  name='grade_prompt'),
+    path('grade/essay/',  views.grade_essay_view,   name='grade_essay'),
+    path('grade/audio/',  views.grade_audio_view,   name='grade_audio'),
+    path('grade/history/', views.submissions_view,  name='submissions'),
+
     # ── Authentication ────────────────────────────────────────
     # Returns current logged in user info
     # React calls this on app load to check if user is logged in

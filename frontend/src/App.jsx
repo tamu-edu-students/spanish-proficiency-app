@@ -5,6 +5,7 @@ import FlashcardScreen from './screens/FlashcardScreen'
 import QuizScreen      from './screens/QuizScreen'
 import ProgressScreen  from './screens/ProgressScreen'
 import VoiceScreen     from './screens/VoiceScreen'
+import GradingScreen   from './screens/GradingScreen'
 import './App.css'
 
 const API = '/api'
@@ -22,6 +23,8 @@ const TAB_LABELS = {
     flashcard: 'Cards',
     quiz: 'Grammar Quiz',
     reading: 'Reading Comprehension',
+    writing: 'Graded Writing',
+    speaking: 'Graded Speaking',
     progress: 'Progress',
     voice: 'Voice',
   },
@@ -30,6 +33,8 @@ const TAB_LABELS = {
     flashcard: 'Tarjetas',
     quiz: 'Prueba de gramática',
     reading: 'Comprensión lectora',
+    writing: 'Escritura calificada',
+    speaking: 'Expresión oral calificada',
     progress: 'Progreso',
     voice: 'Voz',
   },
@@ -282,6 +287,8 @@ function App() {
         {activeTab === 'flashcard' && <FlashcardScreen level={userLevel} sessionId={SESSION_ID} />}
         {activeTab === 'quiz'      && <QuizScreen      level={userLevel} sessionId={SESSION_ID} quizType="grammar" />}
         {activeTab === 'reading'  && <QuizScreen      level={userLevel} sessionId={SESSION_ID} quizType="reading" />}
+        {activeTab === 'writing'   && <GradingScreen   kind="essay" level={userLevel} sessionId={SESSION_ID} />}
+        {activeTab === 'speaking'  && <GradingScreen   kind="audio" level={userLevel} sessionId={SESSION_ID} />}
         {activeTab === 'progress'  && <ProgressScreen  level={userLevel} sessionId={SESSION_ID} />}
         {activeTab === 'voice'     && <VoiceScreen     level={userLevel} />}
       </div>
