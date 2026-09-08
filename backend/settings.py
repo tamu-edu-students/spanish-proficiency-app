@@ -8,11 +8,14 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-1ni!34_it^fyk@a3gg6viaocnedni0$bhlyv-nh*p=_5q$u++7'
+SECRET_KEY = os.getenv(
+    'SECRET_KEY',
+    'django-insecure-1ni!34_it^fyk@a3gg6viaocnedni0$bhlyv-nh*p=_5q$u++7'
+)
 
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
 # ── Dev mode flag ─────────────────────────────────────────────
 # True  = skip CAS, use local testing
@@ -36,6 +39,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -89,7 +93,25 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STORAGES = {
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ── Frontend (built React app served by Django/WhiteNoise) ─────
+# Populated by `npm --prefix frontend run build`. Serves index.html
+# at "/" and the hashed JS/CSS bundles it references.
+WHITENOISE_ROOT = BASE_DIR / 'frontend' / 'dist'
+WHITENOISE_INDEX_FILE = True
+
+# ── Reverse proxy (Cloud Run terminates TLS upstream) ───────────
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+CSRF_TRUSTED_ORIGINS = [
+    o for o in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if o
+]
 
 # ── Gemini API ────────────────────────────────────────────────
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
