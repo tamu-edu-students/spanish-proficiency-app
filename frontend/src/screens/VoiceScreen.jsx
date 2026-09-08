@@ -1,10 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
 import axios from 'axios'
+import { strings } from '../i18n'
 
 const API = '/api'
 
-function VoiceScreen({ level }) {
-  const [status, setStatus]         = useState('Tap the mic to start')
+function VoiceScreen({ level, lang }) {
+  const t = strings(lang)
+  const tRef = useRef(t)
+  useEffect(() => { tRef.current = t }, [t])
+  const [status, setStatus]         = useState(t.tapToStart)
   const [listening, setListening]   = useState(false)
   const [speaking, setSpeaking]     = useState(false)
   const [thinking, setThinking]     = useState(false)
@@ -62,7 +66,7 @@ function VoiceScreen({ level }) {
 
   async function sendToGemini(userText) {
     setThinking(true)
-    setStatus('Gemini esta pensando...')
+    setStatus(t.geminiThinking)
 
     // Read from refs so we always have current values, not stale closure
     const currentLevel   = levelRef.current
@@ -101,7 +105,7 @@ function VoiceScreen({ level }) {
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SpeechRecognition) {
-      window.setTimeout(() => setStatus('Speech not supported. Use Chrome or Edge.'), 0)
+      window.setTimeout(() => setStatus(tRef.current.speechUnsupported), 0)
       return
     }
 
@@ -131,7 +135,7 @@ function VoiceScreen({ level }) {
     recognition.onerror = (e) => {
       console.log('Error:', e.error)
       if (e.error === 'not-allowed') {
-        setStatus('Microphone permission denied.')
+        setStatus(tRef.current.micPermissionDenied)
         setListening(false)
         listeningRef.current = false
       }
@@ -171,7 +175,7 @@ function VoiceScreen({ level }) {
     try {
       recognitionRef.current.start()
       setListening(true)
-      setStatus('Listening... speak now')
+      setStatus(t.listening)
     } catch (e) {
       console.error('Start error:', e)
       setStatus("Couldn't start. Tap to try again.")
@@ -198,7 +202,7 @@ function VoiceScreen({ level }) {
 
       setTranscript(fullText)
       setLiveText('')
-      setStatus('Processing...')
+      setStatus(t.processing)
       trackVoiceActivity()
       sendToGemini(fullText)
     }, 300)
@@ -206,7 +210,7 @@ function VoiceScreen({ level }) {
 
   function speakSpanish(text) {
     setSpeaking(true)
-    setStatus('Gemini is speaking...')
+    setStatus(t.geminiSpeaking)
     window.speechSynthesis.cancel()
 
     const utterance  = new SpeechSynthesisUtterance(text)
@@ -223,7 +227,7 @@ function VoiceScreen({ level }) {
 
     if (spanishVoice) utterance.voice = spanishVoice
 
-    utterance.onend   = () => { setSpeaking(false); setStatus('Tap the mic to speak again') }
+    utterance.onend   = () => { setSpeaking(false); setStatus(t.tapToSpeakAgain) }
     utterance.onerror = () => { setSpeaking(false); setStatus('Tap the mic to speak') }
 
     window.speechSynthesis.speak(utterance)
@@ -232,7 +236,7 @@ function VoiceScreen({ level }) {
   function stopSpeaking() {
     window.speechSynthesis.cancel()
     setSpeaking(false)
-    setStatus('Tap the mic to speak')
+    setStatus(t.tapToSpeak)
   }
 
   const micColor  = listening ? '#E24B4A' : speaking ? '#1D9E75' : thinking ? '#EF9F27' : '#500000'
@@ -266,7 +270,7 @@ function VoiceScreen({ level }) {
       </p>
       <p style={{
         fontFamily:   "'Open Sans', sans-serif",
-        fontSize:     '13px',
+        fontSize:     '15px',
         color:        '#888',
         marginBottom: '28px',
         textAlign:    'center'
@@ -280,7 +284,7 @@ function VoiceScreen({ level }) {
         borderRadius: '20px',
         padding:      '4px 14px',
         marginBottom: '12px',
-        fontSize:     '12px',
+        fontSize:     '14px',
         color:        '#500000',
         fontFamily:   "'Open Sans', sans-serif",
         fontWeight:   '600'
@@ -300,7 +304,7 @@ function VoiceScreen({ level }) {
       }}>
         <p style={{
           fontFamily: "'Open Sans', sans-serif",
-          fontSize:   '13px',
+          fontSize:   '15px',
           color:      thinking ? '#500000' : speaking ? '#085041' : '#555',
           fontWeight: thinking || speaking ? '600' : '400'
         }}>
@@ -364,14 +368,14 @@ function VoiceScreen({ level }) {
 
       <p style={{
         fontFamily:   "'Open Sans', sans-serif",
-        fontSize:     '13px',
+        fontSize:     '15px',
         color:        '#888',
         marginBottom: '16px'
       }}>
-        {listening  ? 'Tap again when done speaking' :
-         speaking   ? 'Tap to stop'                  :
-         thinking   ? 'Thinking...'                  :
-                      'Tap to speak'}
+        {listening  ? t.tapWhenDone :
+         speaking   ? t.tapToStop    :
+         thinking   ? t.thinking     :
+                      t.tapToSpeak}
       </p>
 
       {/* Live text while speaking */}
@@ -387,7 +391,7 @@ function VoiceScreen({ level }) {
         }}>
           <p style={{
             fontFamily:    "'Oswald', sans-serif",
-            fontSize:      '10px',
+            fontSize:      '12px',
             color:         '#500000',
             textTransform: 'uppercase',
             letterSpacing: '0.1em',
@@ -397,7 +401,7 @@ function VoiceScreen({ level }) {
           </p>
           <p style={{
             fontFamily: "'Open Sans', sans-serif",
-            fontSize:   '14px',
+            fontSize:   '15px',
             color:      '#333',
             fontStyle:  'italic',
             lineHeight: '1.5'
@@ -419,7 +423,7 @@ function VoiceScreen({ level }) {
         }}>
           <p style={{
             fontFamily:    "'Oswald', sans-serif",
-            fontSize:      '10px',
+            fontSize:      '12px',
             fontWeight:    '600',
             textTransform: 'uppercase',
             letterSpacing: '0.1em',
@@ -430,7 +434,7 @@ function VoiceScreen({ level }) {
           </p>
           <p style={{
             fontFamily: "'Open Sans', sans-serif",
-            fontSize:   '14px',
+            fontSize:   '15px',
             color:      '#202020',
             lineHeight: '1.5'
           }}>
@@ -451,7 +455,7 @@ function VoiceScreen({ level }) {
         }}>
           <p style={{
             fontFamily: "'Open Sans', sans-serif",
-            fontSize:   '13px',
+            fontSize:   '15px',
             color:      '#999'
           }}>
             Gemini esta pensando en espanol...
@@ -471,7 +475,7 @@ function VoiceScreen({ level }) {
         }}>
           <p style={{
             fontFamily:    "'Oswald', sans-serif",
-            fontSize:      '10px',
+            fontSize:      '12px',
             fontWeight:    '600',
             textTransform: 'uppercase',
             letterSpacing: '0.1em',
@@ -482,7 +486,7 @@ function VoiceScreen({ level }) {
           </p>
           <p style={{
             fontFamily: "'Open Sans', sans-serif",
-            fontSize:   '14px',
+            fontSize:   '15px',
             color:      '#202020',
             lineHeight: '1.5'
           }}>
@@ -493,7 +497,7 @@ function VoiceScreen({ level }) {
 
       <p style={{
         fontFamily: "'Open Sans', sans-serif",
-        fontSize:   '11px',
+        fontSize:   '13px',
         color:      '#bbb',
         marginTop:  '16px'
       }}>

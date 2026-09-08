@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import axios from 'axios'
+import { strings } from '../i18n'
 
 const API     = '/api'
 const TOTAL_Q = 10
 
-function QuizScreen({ level, sessionId, quizType = 'grammar' }) {
+function QuizScreen({ level, sessionId, lang, quizType = 'grammar' }) {
+  const t = strings(lang)
   const [questions, setQuestions]       = useState([])
   const [questionNum, setQuestionNum]   = useState(0)   // 0 = start screen
   const [selected, setSelected]         = useState(null)
@@ -60,7 +62,7 @@ function QuizScreen({ level, sessionId, quizType = 'grammar' }) {
       setQuestionNum(1)
     } catch (error) {
       console.error('Error loading quiz:', error)
-      alert('Could not load quiz. Please try again.')
+      alert(t.quizLoadFailed)
     } finally {
       setLoading(false)
     }
@@ -85,7 +87,7 @@ function QuizScreen({ level, sessionId, quizType = 'grammar' }) {
       setQuestionNum(1)
     } catch (error) {
       console.error('Error loading reading quiz:', error)
-      alert('Could not load the reading quiz. Please try again.')
+      alert(t.readingLoadFailed)
     } finally {
       setLoading(false)
     }
@@ -139,21 +141,21 @@ function QuizScreen({ level, sessionId, quizType = 'grammar' }) {
     return (
       <div style={{ padding: '24px', textAlign: 'center' }}>
         <div style={{ fontSize: '48px', marginBottom: '16px' }}>📝</div>
-        <p style={{ fontSize: '18px', fontWeight: '600', color: '#333', marginBottom: '8px' }}>
-          {quizMode === 'reading' ? 'Spanish Reading Comprehension' : 'Spanish Grammar Quiz'}
+        <p style={{ fontSize: '19px', fontWeight: '600', color: '#333', marginBottom: '8px' }}>
+          {quizMode === 'reading' ? t.readingQuizTitle : t.grammarQuizTitle}
         </p>
-        <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6', marginBottom: '16px' }}>
+        <p style={{ fontSize: '15px', color: '#666', lineHeight: '1.6', marginBottom: '16px' }}>
           {quizMode === 'reading'
             ? 'Read a Spanish passage and answer 5 questions about what you read.'
             : 'Answer 10 questions. Pick the correct word to complete each sentence.'}
         </p>
-        <div style={{ display: 'inline-block', background: '#E1F5EE', color: '#085041', borderRadius: '20px', padding: '4px 14px', fontSize: '13px', marginBottom: '24px' }}>
+        <div style={{ display: 'inline-block', background: '#E1F5EE', color: '#085041', borderRadius: '20px', padding: '4px 14px', fontSize: '15px', marginBottom: '24px' }}>
           Level: {level}
         </div>
         <br />
         <button
           onClick={quizMode === 'reading' ? startReadingQuiz : startQuiz}
-          style={{ padding: '14px 40px', background: '#500000', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '500', cursor: 'pointer' }}
+          style={{ padding: '14px 40px', background: '#500000', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '500', cursor: 'pointer' }}
         >
           Start Quiz
         </button>
@@ -167,10 +169,10 @@ function QuizScreen({ level, sessionId, quizType = 'grammar' }) {
       <div style={{ padding: '60px 24px', textAlign: 'center', color: '#666' }}>
         <div style={{ width: '48px', height: '48px', border: '4px solid #f0e8e8', borderTop: '4px solid #500000', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 24px' }} />
         <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-        <p style={{ fontSize: '16px', fontWeight: '600', color: '#500000', marginBottom: '8px' }}>
+        <p style={{ fontSize: '17px', fontWeight: '600', color: '#500000', marginBottom: '8px' }}>
           Preparing your quiz...
         </p>
-        <p style={{ fontSize: '13px', color: '#999' }}>
+        <p style={{ fontSize: '15px', color: '#999' }}>
           Gemini is generating 10 {level} level questions
         </p>
       </div>
@@ -193,7 +195,7 @@ function QuizScreen({ level, sessionId, quizType = 'grammar' }) {
         <p style={{ fontFamily: "'Oswald', sans-serif", fontSize: '22px', fontWeight: '700', color: '#500000', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
           Quiz Complete
         </p>
-        <p style={{ fontSize: '14px', color: '#666', marginBottom: '28px' }}>{message}</p>
+        <p style={{ fontSize: '15px', color: '#666', marginBottom: '28px' }}>{message}</p>
 
         <div style={{
           width: '120px', height: '120px', borderRadius: '50%',
@@ -205,27 +207,27 @@ function QuizScreen({ level, sessionId, quizType = 'grammar' }) {
           <p style={{ fontSize: '32px', fontWeight: '700', color: '#333', lineHeight: 1 }}>
             {sessionScore}/{totalQuestions}
           </p>
-          <p style={{ fontSize: '13px', color: '#666', marginTop: '4px' }}>{pct}%</p>
+          <p style={{ fontSize: '15px', color: '#666', marginTop: '4px' }}>{pct}%</p>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', marginBottom: '32px' }}>
           <div style={{ textAlign: 'center' }}>
             <p style={{ fontSize: '22px', fontWeight: '700', color: '#1D9E75' }}>{sessionScore}</p>
-            <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Correct</p>
+            <p style={{ fontSize: '13px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Correct</p>
           </div>
           <div style={{ textAlign: 'center' }}>
             <p style={{ fontSize: '22px', fontWeight: '700', color: '#E24B4A' }}>{totalQuestions - sessionScore}</p>
-            <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Incorrect</p>
+            <p style={{ fontSize: '13px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Incorrect</p>
           </div>
           <div style={{ textAlign: 'center' }}>
             <p style={{ fontSize: '22px', fontWeight: '700', color: '#500000' }}>{pct}%</p>
-            <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Score</p>
+            <p style={{ fontSize: '13px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Score</p>
           </div>
         </div>
 
         <button
           onClick={quizMode === 'reading' ? startReadingQuiz : startQuiz}
-          style={{ width: '100%', maxWidth: '300px', padding: '14px', background: '#500000', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '500', cursor: 'pointer' }}
+          style={{ width: '100%', maxWidth: '300px', padding: '14px', background: '#500000', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '500', cursor: 'pointer' }}
         >
           Practice Again
         </button>
@@ -240,10 +242,10 @@ function QuizScreen({ level, sessionId, quizType = 'grammar' }) {
       {/* Progress bar */}
       <div style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-          <span style={{ fontSize: '12px', color: '#888', fontFamily: "'Open Sans', sans-serif" }}>
+          <span style={{ fontSize: '14px', color: '#888', fontFamily: "'Open Sans', sans-serif" }}>
             Question {questionNum} of {totalQuestions}
           </span>
-          <span style={{ fontSize: '12px', color: '#500000', fontWeight: '600', fontFamily: "'Open Sans', sans-serif" }}>
+          <span style={{ fontSize: '14px', color: '#500000', fontWeight: '600', fontFamily: "'Open Sans', sans-serif" }}>
             {sessionScore} correct
           </span>
         </div>
@@ -260,10 +262,10 @@ function QuizScreen({ level, sessionId, quizType = 'grammar' }) {
 
       {quizMode === 'reading' && (
         <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '16px', padding: '20px', marginBottom: '16px' }}>
-          <p style={{ fontSize: '13px', color: '#500000', fontWeight: '500', marginBottom: '10px' }}>
+          <p style={{ fontSize: '15px', color: '#500000', fontWeight: '500', marginBottom: '10px' }}>
             Read the passage
           </p>
-          <p style={{ fontSize: '16px', color: '#333', lineHeight: '1.7', whiteSpace: 'pre-wrap' }}>
+          <p style={{ fontSize: '17px', color: '#333', lineHeight: '1.7', whiteSpace: 'pre-wrap' }}>
             {passage}
           </p>
         </div>
@@ -271,17 +273,17 @@ function QuizScreen({ level, sessionId, quizType = 'grammar' }) {
 
       {/* Level badge */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-        <span style={{ background: '#E1F5EE', color: '#085041', borderRadius: '20px', padding: '3px 12px', fontSize: '12px', fontWeight: '500' }}>
+        <span style={{ background: '#E1F5EE', color: '#085041', borderRadius: '20px', padding: '3px 12px', fontSize: '14px', fontWeight: '500' }}>
           Level {level}
         </span>
       </div>
 
       {/* Question card */}
       <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '16px', padding: '20px', marginBottom: '16px' }}>
-        <p style={{ fontSize: '13px', color: '#500000', fontWeight: '500', marginBottom: '10px' }}>
-          {quizMode === 'reading' ? 'Comprehension question:' : 'Fill in the blank:'}
+        <p style={{ fontSize: '15px', color: '#500000', fontWeight: '500', marginBottom: '10px' }}>
+          {quizMode === 'reading' ? t.comprehensionQuestion : t.fillInTheBlank}
         </p>
-        <p style={{ fontSize: '17px', color: '#333', lineHeight: '1.6' }}>
+        <p style={{ fontSize: '18px', color: '#333', lineHeight: '1.6' }}>
           {quizMode === 'reading' ? currentQuestion.question : currentQuestion.sentence}
         </p>
       </div>
@@ -299,14 +301,14 @@ function QuizScreen({ level, sessionId, quizType = 'grammar' }) {
               key={i}
               onClick={() => pickAnswer(option)}
               disabled={!!selected}
-              style={{ padding: '14px 16px', background: bg, border: `1px solid ${border}`, borderRadius: '12px', color, fontSize: '14px', textAlign: 'left', cursor: selected ? 'default' : 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '10px' }}
+              style={{ padding: '14px 16px', background: bg, border: `1px solid ${border}`, borderRadius: '12px', color, fontSize: '15px', textAlign: 'left', cursor: selected ? 'default' : 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '10px' }}
             >
               <span style={{
                 width: '24px', height: '24px', borderRadius: '50%', flexShrink: 0,
                 background: selected && option === currentQuestion.answer ? '#1D9E75'
                   : selected && option === selected && option !== currentQuestion.answer ? '#E24B4A' : '#f0f0f0',
                 color: selected && (option === currentQuestion.answer || option === selected) ? '#fff' : '#666',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '500'
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '500'
               }}>
                 {['A','B','C','D'][i]}
               </span>
@@ -319,10 +321,10 @@ function QuizScreen({ level, sessionId, quizType = 'grammar' }) {
       {/* Feedback */}
       {selected && feedback && (
         <div style={{ padding: '14px', background: selected === currentQuestion.answer ? '#E1F5EE' : '#FCEBEB', border: `1px solid ${selected === currentQuestion.answer ? '#5DCAA5' : '#F09595'}`, borderRadius: '12px', marginBottom: '16px' }}>
-          <p style={{ fontSize: '13px', fontWeight: '500', color: selected === currentQuestion.answer ? '#085041' : '#501313', marginBottom: '4px' }}>
+          <p style={{ fontSize: '15px', fontWeight: '500', color: selected === currentQuestion.answer ? '#085041' : '#501313', marginBottom: '4px' }}>
             {selected === currentQuestion.answer ? 'Correcto! 🎉' : 'Incorrecto ❌'}
           </p>
-          <p style={{ fontSize: '13px', color: selected === currentQuestion.answer ? '#0F6E56' : '#7B2323', lineHeight: '1.5' }}>
+          <p style={{ fontSize: '15px', color: selected === currentQuestion.answer ? '#0F6E56' : '#7B2323', lineHeight: '1.5' }}>
             {feedback}
           </p>
         </div>
@@ -332,9 +334,9 @@ function QuizScreen({ level, sessionId, quizType = 'grammar' }) {
       {selected && (
         <button
           onClick={nextQuestion}
-          style={{ width: '100%', padding: '14px', background: '#500000', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '500', cursor: 'pointer' }}
+          style={{ width: '100%', padding: '14px', background: '#500000', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '500', cursor: 'pointer' }}
         >
-          {questionNum >= totalQuestions ? 'See Results' : 'Next Question'}
+          {questionNum >= totalQuestions ? t.seeResults : t.nextQuestion}
         </button>
       )}
 

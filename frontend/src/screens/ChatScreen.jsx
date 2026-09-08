@@ -92,7 +92,7 @@ function ChatScreen({ level, sessionId }) {
         padding:    '8px 16px',
         background: '#faf8f8',
         borderBottom: '1px solid #f0e8e8',
-        fontSize:   '12px',
+        fontSize:   '14px',
         color:      '#888',
         fontFamily: "'Open Sans', sans-serif"
       }}>
@@ -121,7 +121,7 @@ function ChatScreen({ level, sessionId }) {
                 : '16px 16px 16px 4px',
               background: msg.role === 'user' ? '#500000' : '#fff',
               color:      msg.role === 'user' ? '#fff'    : '#333',
-              fontSize:   '14px',
+              fontSize:   '15px',
               lineHeight: '1.5',
               border:     msg.role === 'model' ? '1px solid #e0e0e0' : 'none'
             }}>
@@ -137,7 +137,7 @@ function ChatScreen({ level, sessionId }) {
               borderRadius: '16px 16px 16px 4px',
               background:   '#fff',
               border:       '1px solid #e0e0e0',
-              fontSize:     '14px',
+              fontSize:     '15px',
               color:        '#888'
             }}>
               Escribiendo...
@@ -164,7 +164,7 @@ function ChatScreen({ level, sessionId }) {
             padding:      '10px 14px',
             border:       '1px solid #e0e0e0',
             borderRadius: '20px',
-            fontSize:     '14px',
+            fontSize:     '15px',
             outline:      'none'
           }}
         />
@@ -179,7 +179,7 @@ function ChatScreen({ level, sessionId }) {
             border:       'none',
             cursor:       loading ? 'not-allowed' : 'pointer',
             color:        'white',
-            fontSize:     '16px'
+            fontSize:     '17px'
           }}
         >
           →

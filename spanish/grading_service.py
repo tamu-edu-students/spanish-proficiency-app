@@ -216,6 +216,22 @@ class AIGradingService:
                       • Supporting ideas are too vague to evaluate
                     Score 0: No relevant content
 
+                    TRANSITION-WORD PENALTY — apply to TOPIC DEVELOPMENT after judging development:
+                      Linking ideas is part of developing a topic, so count the DISTINCT transition
+                      words/phrases the essay uses to connect major ideas. Qualifying transitions:
+                        "además," "asimismo," "igualmente," "por ejemplo," "es decir," "en particular,"
+                        "sin embargo," "no obstante," "a pesar de," "aunque," "por lo tanto," "por eso,"
+                        "debido a," "como resultado," "en conclusión," "en resumen," "finalmente"
+                      NOT qualifying — these are coordination, not cohesion:
+                        "y," "pero," "o," "también"
+                      Cap TD by the number of DISTINCT qualifying transitions:
+                        • 3 or more → no cap; TD keeps the score the development quality earned
+                        • 1–2       → TD CANNOT exceed 2, even if every point is fully explained
+                        • 0         → TD CANNOT exceed 1, even if every point is fully explained
+                      This cap can only LOWER the TD score, never raise it. State the transition count
+                      and the cap you applied in your reasoning, and if the cap lowered TD, the
+                      feedback must name the missing transitions and where they belong.
+
                     ── LANGUAGE USE ──
                     Language Use is evaluated on THREE sub-dimensions — score ALL three before assigning the final LU score:
 

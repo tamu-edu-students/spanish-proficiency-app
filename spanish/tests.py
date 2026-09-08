@@ -201,6 +201,17 @@ class PromptBuilderTests(TestCase):
         self.assertIn('Simulated Conversation', prompt)
         self.assertIn('Score 3 (High)', prompt)
 
+    def test_essay_prompt_caps_topic_development_on_missing_transitions(self):
+        prompt = self.service._build_essay_prompt('Hola.', TASK)
+        self.assertIn('TRANSITION-WORD PENALTY', prompt)
+        # The cap belongs to Topic Development, not Language Use.
+        td = prompt.split('── TOPIC DEVELOPMENT ──')[1].split('── LANGUAGE USE ──')[0]
+        self.assertIn('TRANSITION-WORD PENALTY', td)
+        self.assertIn('TD CANNOT exceed 2', td)
+        self.assertIn('TD CANNOT exceed 1', td)
+        # "y"/"pero"/"también" must not count towards the transition tally.
+        self.assertIn('NOT qualifying', td)
+
 
 # ---------------------------------------------------------------------------
 # Grading service

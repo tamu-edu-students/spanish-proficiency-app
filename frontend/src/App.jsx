@@ -6,6 +6,7 @@ import QuizScreen      from './screens/QuizScreen'
 import ProgressScreen  from './screens/ProgressScreen'
 import VoiceScreen     from './screens/VoiceScreen'
 import GradingScreen   from './screens/GradingScreen'
+import { strings }     from './i18n'
 import './App.css'
 
 const API = '/api'
@@ -24,7 +25,7 @@ const TAB_LABELS = {
     quiz: 'Grammar Quiz',
     reading: 'Reading Comprehension',
     writing: 'Graded Writing',
-    speaking: 'Graded Speaking',
+    // speaking: 'Graded Speaking',   // ponytail: hidden, uncomment to restore
     progress: 'Progress',
     voice: 'Voice',
   },
@@ -34,7 +35,7 @@ const TAB_LABELS = {
     quiz: 'Prueba de gramática',
     reading: 'Comprensión lectora',
     writing: 'Escritura calificada',
-    speaking: 'Expresión oral calificada',
+    // speaking: 'Expresión oral calificada',
     progress: 'Progreso',
     voice: 'Voz',
   },
@@ -45,7 +46,7 @@ const LANGUAGE_TOGGLE_LABELS = {
   es: 'Español',
 }
 
-function LevelSelect({ value, onChange, disabled }) {
+function LevelSelect({ value, onChange, disabled, t }) {
   return (
     <div style={{ position: 'relative' }}>
       <select
@@ -64,12 +65,12 @@ function LevelSelect({ value, onChange, disabled }) {
           position:   'absolute',
           bottom:     '-18px',
           left:       '0',
-          fontSize:   '10px',
+          fontSize:   '12px',
           color:      '#999',
           whiteSpace: 'nowrap',
           fontFamily: "'Open Sans', sans-serif"
         }}>
-          Change level before Voice
+          {t.levelLockedHint}
         </div>
       )}
     </div>
@@ -85,6 +86,7 @@ function App() {
 
   const levelLocked = activeTab === 'voice'
   const tabLabels = TAB_LABELS[labelLanguage] || TAB_LABELS.en
+  const t = strings(labelLanguage)
 
   useEffect(() => {
     checkAuth()
@@ -156,8 +158,8 @@ function App() {
             alt="Texas A&M"
             style={{ height: '60px', display: 'block', margin: '0 auto 20px', filter: 'brightness(0) invert(1)' }}
           />
-          <p style={{ fontFamily: "'Oswald', sans-serif", fontSize: '16px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.8)' }}>
-            Loading EspañolAI...
+          <p style={{ fontFamily: "'Oswald', sans-serif", fontSize: '17px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.8)' }}>
+            {t.loading}
           </p>
         </div>
       </div>
@@ -175,20 +177,20 @@ function App() {
             style={{ height: '50px', marginBottom: '12px' }}
           />
           <p style={{ fontFamily: "'Oswald', sans-serif", fontSize: '26px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#500000', marginBottom: '8px' }}>
-            EspañolAI
+            Español-AI
           </p>
-          <p style={{ fontFamily: "'Open Sans', sans-serif", fontSize: '13px', color: '#707070', marginBottom: '32px', lineHeight: '1.6' }}>
+          <p style={{ fontFamily: "'Open Sans', sans-serif", fontSize: '15px', color: '#707070', marginBottom: '32px', lineHeight: '1.6' }}>
             AI-powered Spanish tutor for Texas A&M students. Sign in with your TAMU NetID to get started.
           </p>
           <button
             onClick={login}
-            style={{ width: '100%', padding: '14px', background: '#500000', color: 'white', border: 'none', fontSize: '14px', fontFamily: "'Oswald', sans-serif", fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer', marginBottom: '16px' }}
+            style={{ width: '100%', padding: '14px', background: '#500000', color: 'white', border: 'none', fontSize: '15px', fontFamily: "'Oswald', sans-serif", fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer', marginBottom: '16px' }}
             onMouseEnter={e => e.target.style.background = '#3C0000'}
             onMouseLeave={e => e.target.style.background = '#500000'}
           >
             Sign in with TAMU NetID
           </button>
-          <p style={{ fontFamily: "'Open Sans', sans-serif", fontSize: '11px', color: '#999' }}>
+          <p style={{ fontFamily: "'Open Sans', sans-serif", fontSize: '13px', color: '#999' }}>
             Uses Texas A&M Central Authentication Service (CAS)
           </p>
         </div>
@@ -203,15 +205,15 @@ function App() {
 
       {/* Mobile header */}
       <div className="header">
-        <span className="app-title">EspañolAI</span>
+        <span className="app-title">Español-AI</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: levelLocked ? '12px' : '0' }}>
-          <LevelSelect value={userLevel} onChange={setUserLevel} disabled={levelLocked} />
+          <LevelSelect value={userLevel} onChange={setUserLevel} disabled={levelLocked} t={t} />
           {!user.dev_mode && (
             <button
               onClick={logout}
-              style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', padding: '4px 10px', fontSize: '11px', fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer' }}
+              style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', padding: '4px 10px', fontSize: '13px', fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer' }}
             >
-              Sign Out
+              {t.signOut}
             </button>
           )}
         </div>
@@ -224,10 +226,10 @@ function App() {
           <img src="https://aux.tamu.edu/logos/boxTAM.svg" alt="Texas A&M University" />
         </div>
 
-        <div className="sidebar-title">EspañolAI</div>
+        <div className="sidebar-title">Español-AI</div>
 
         <div className="sidebar-language">
-          <span className="sidebar-level-label">Labels</span>
+          <span className="sidebar-level-label">{t.labels}</span>
           <div className="language-toggle">
             <button
               type="button"
@@ -250,14 +252,14 @@ function App() {
         <div className="sidebar-user">
           {user.dev_mode ? (
             <div>
-              <span className="dev-badge">Dev Mode</span>
+              <span className="dev-badge">{t.devMode}</span>
               <p className="user-name">{user.name || user.netid}</p>
             </div>
           ) : (
             <div>
               <p className="user-name">{user.name || user.netid}</p>
               <p className="user-email">{user.netid}@tamu.edu</p>
-              <button className="signout-btn" onClick={logout}>Sign Out</button>
+              <button className="signout-btn" onClick={logout}>{t.signOut}</button>
             </div>
           )}
         </div>
@@ -265,9 +267,9 @@ function App() {
         {/* Level selector - locked on Voz tab */}
         <div className="sidebar-level">
           <span className="sidebar-level-label">
-            Proficiency Level {levelLocked ? '(locked on Voz)' : ''}
+            {t.proficiencyLevel} {levelLocked ? t.lockedOnVoice : ''}
           </span>
-          <LevelSelect value={userLevel} onChange={setUserLevel} disabled={levelLocked} />
+          <LevelSelect value={userLevel} onChange={setUserLevel} disabled={levelLocked} t={t} />
         </div>
 
         {Object.keys(tabLabels).map(tabKey => (
@@ -283,14 +285,14 @@ function App() {
 
       {/* Main content */}
       <div className="screen-area">
-        {activeTab === 'chat'      && <ChatScreen      level={userLevel} sessionId={SESSION_ID} />}
-        {activeTab === 'flashcard' && <FlashcardScreen level={userLevel} sessionId={SESSION_ID} />}
-        {activeTab === 'quiz'      && <QuizScreen      level={userLevel} sessionId={SESSION_ID} quizType="grammar" />}
-        {activeTab === 'reading'  && <QuizScreen      level={userLevel} sessionId={SESSION_ID} quizType="reading" />}
-        {activeTab === 'writing'   && <GradingScreen   kind="essay" level={userLevel} sessionId={SESSION_ID} />}
-        {activeTab === 'speaking'  && <GradingScreen   kind="audio" level={userLevel} sessionId={SESSION_ID} />}
-        {activeTab === 'progress'  && <ProgressScreen  level={userLevel} sessionId={SESSION_ID} />}
-        {activeTab === 'voice'     && <VoiceScreen     level={userLevel} />}
+        {activeTab === 'chat'      && <ChatScreen      level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
+        {activeTab === 'flashcard' && <FlashcardScreen level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
+        {activeTab === 'quiz'      && <QuizScreen      level={userLevel} sessionId={SESSION_ID} quizType="grammar" lang={labelLanguage} />}
+        {activeTab === 'reading'  && <QuizScreen      level={userLevel} sessionId={SESSION_ID} quizType="reading" lang={labelLanguage} />}
+        {activeTab === 'writing'   && <GradingScreen   kind="essay" level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
+        {activeTab === 'speaking'  && <GradingScreen   kind="audio" level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
+        {activeTab === 'progress'  && <ProgressScreen  level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
+        {activeTab === 'voice'     && <VoiceScreen     level={userLevel} lang={labelLanguage} />}
       </div>
 
     </div>

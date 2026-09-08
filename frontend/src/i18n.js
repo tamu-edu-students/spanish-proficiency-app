@@ -1,0 +1,170 @@
+// UI chrome strings, switched by the sidebar Labels toggle.
+// ponytail: a plain object, not an i18n library — two languages, one dict,
+// no pluralisation rules needed. Reach for react-i18next if a third
+// language or date/number formatting shows up.
+
+const STRINGS = {
+  en: {
+    // ── app chrome ──
+    labels:           'Labels',
+    proficiencyLevel: 'Proficiency Level',
+    lockedOnVoice:    '(locked on Voice)',
+    levelLockedHint:  'Change level before Voice',
+    devMode:          'Dev Mode',
+    signOut:          'Sign Out',
+    loading:          'Loading Español-AI...',
+
+    // ── grading (essay + speaking) ──
+    newPrompt:          'New prompt',
+    generatingPrompt:   'Generating a prompt...',
+    ownPrompt:          'Write your own prompt',
+    ownPromptTitle:     'Your own prompt',
+    ownPromptPlaceholder: 'Paste or type the task prompt the essay should be graded against...',
+    useThisPrompt:      'Use this prompt',
+    cancel:             'Cancel',
+    backToGenerated:    'Back to generated prompt',
+    customPromptBadge:  'Custom prompt',
+    essayPlaceholder:   'Write your essay here...',
+    noteEssay:          'Minimum 75 words. No upper limit.',
+    noteAudio:          'Speak for 50–120 seconds.',
+    words:              'words',
+    wordsMinimum:       '(75 minimum)',
+    gradeEssay:         'Grade essay',
+    gradeRecording:     'Grade recording',
+    grading:            'Grading...',
+    tryAgain:           'Try again',
+    tryAgainSamePrompt: 'Try again with the same prompt',
+    gradingFailed:      'Grading failed. Please try again.',
+    record:             'Record',
+    stop:               'Stop',
+    orUpload:           'or upload',
+    micDenied:          'Microphone access denied. You can upload an audio file instead.',
+    score:              'Score',
+    overallConfidence:  'overall confidence',
+    conf:               'conf.',
+    graderReasoning:    'Grader reasoning',
+    transcription:      'Transcription',
+    pastEssays:         'Past essays',
+    pastRecordings:     'Past recordings',
+    english:            'English',
+    spanish:            'Español',
+
+    // ── flashcards ──
+    generateCards:       'Generate Cards',
+    generatingCards:     'Generating cards...',
+    cardsTopicPlaceholder: 'e.g. animals, colors, emotions...',
+    tapToSeeTranslation: 'Tap to see translation',
+    of:                  'of',
+
+    // ── quiz ──
+    grammarQuizTitle:    'Spanish Grammar Quiz',
+    readingQuizTitle:    'Spanish Reading Comprehension',
+    fillInTheBlank:      'Fill in the blank:',
+    comprehensionQuestion: 'Comprehension question:',
+    nextQuestion:        'Next Question',
+    seeResults:          'See Results',
+    correct:             'Correct',
+    incorrect:           'Incorrect',
+    quizLoadFailed:      'Could not load quiz. Please try again.',
+    readingLoadFailed:   'Could not load the reading quiz. Please try again.',
+
+    // ── voice ──
+    tapToStart:          'Tap the mic to start',
+    tapToSpeak:          'Tap to speak',
+    tapToSpeakAgain:     'Tap the mic to speak again',
+    tapWhenDone:         'Tap again when done speaking',
+    tapToStop:           'Tap to stop',
+    listening:           'Listening... speak now',
+    thinking:            'Thinking...',
+    processing:          'Processing...',
+    geminiThinking:      'Gemini is thinking...',
+    geminiSpeaking:      'Gemini is speaking...',
+    speechUnsupported:   'Speech not supported. Use Chrome or Edge.',
+    micPermissionDenied: 'Microphone permission denied.',
+  },
+
+  es: {
+    // ── app chrome ──
+    labels:           'Etiquetas',
+    proficiencyLevel: 'Nivel de competencia',
+    lockedOnVoice:    '(bloqueado en Voz)',
+    levelLockedHint:  'Cambia el nivel antes de Voz',
+    devMode:          'Modo desarrollo',
+    signOut:          'Cerrar sesión',
+    loading:          'Cargando Español-AI...',
+
+    // ── grading (essay + speaking) ──
+    newPrompt:          'Nueva pregunta',
+    generatingPrompt:   'Generando una pregunta...',
+    ownPrompt:          'Escribe tu propia pregunta',
+    ownPromptTitle:     'Tu propia pregunta',
+    ownPromptPlaceholder: 'Pega o escribe la pregunta con la que se debe calificar el ensayo...',
+    useThisPrompt:      'Usar esta pregunta',
+    cancel:             'Cancelar',
+    backToGenerated:    'Volver a la pregunta generada',
+    customPromptBadge:  'Pregunta personalizada',
+    essayPlaceholder:   'Escribe tu ensayo aquí...',
+    noteEssay:          'Mínimo 75 palabras. Sin límite máximo.',
+    noteAudio:          'Habla durante 50–120 segundos.',
+    words:              'palabras',
+    wordsMinimum:       '(mínimo 75)',
+    gradeEssay:         'Calificar ensayo',
+    gradeRecording:     'Calificar grabación',
+    grading:            'Calificando...',
+    tryAgain:           'Intentar de nuevo',
+    tryAgainSamePrompt: 'Intentar de nuevo con la misma pregunta',
+    gradingFailed:      'La calificación falló. Inténtalo de nuevo.',
+    record:             'Grabar',
+    stop:               'Detener',
+    orUpload:           'o sube un archivo',
+    micDenied:          'Acceso al micrófono denegado. Puedes subir un archivo de audio.',
+    score:              'Puntuación',
+    overallConfidence:  'confianza general',
+    conf:               'conf.',
+    graderReasoning:    'Razonamiento del calificador',
+    transcription:      'Transcripción',
+    pastEssays:         'Ensayos anteriores',
+    pastRecordings:     'Grabaciones anteriores',
+    english:            'English',
+    spanish:            'Español',
+
+    // ── flashcards ──
+    generateCards:       'Generar tarjetas',
+    generatingCards:     'Generando tarjetas...',
+    cardsTopicPlaceholder: 'p. ej. animales, colores, emociones...',
+    tapToSeeTranslation: 'Toca para ver la traducción',
+    of:                  'de',
+
+    // ── quiz ──
+    grammarQuizTitle:    'Prueba de gramática española',
+    readingQuizTitle:    'Comprensión lectora en español',
+    fillInTheBlank:      'Completa el espacio:',
+    comprehensionQuestion: 'Pregunta de comprensión:',
+    nextQuestion:        'Siguiente pregunta',
+    seeResults:          'Ver resultados',
+    correct:             'Correctas',
+    incorrect:           'Incorrectas',
+    quizLoadFailed:      'No se pudo cargar la prueba. Inténtalo de nuevo.',
+    readingLoadFailed:   'No se pudo cargar la prueba de lectura. Inténtalo de nuevo.',
+
+    // ── voice ──
+    tapToStart:          'Toca el micrófono para empezar',
+    tapToSpeak:          'Toca para hablar',
+    tapToSpeakAgain:     'Toca el micrófono para hablar otra vez',
+    tapWhenDone:         'Toca otra vez cuando termines de hablar',
+    tapToStop:           'Toca para detener',
+    listening:           'Escuchando... habla ahora',
+    thinking:            'Pensando...',
+    processing:          'Procesando...',
+    geminiThinking:      'Gemini está pensando...',
+    geminiSpeaking:      'Gemini está hablando...',
+    speechUnsupported:   'Voz no compatible. Usa Chrome o Edge.',
+    micPermissionDenied: 'Permiso de micrófono denegado.',
+  },
+}
+
+export function strings(lang) {
+  return STRINGS[lang] || STRINGS.en
+}
+
+export default STRINGS

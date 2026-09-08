@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import axios from 'axios'
+import { strings } from '../i18n'
 
 const API = '/api'
 
-function FlashcardScreen({ level, sessionId }) {
+function FlashcardScreen({ level, sessionId, lang }) {
+  const t = strings(lang)
   const [cards, setCards]               = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [flipped, setFlipped]           = useState(false)
@@ -97,12 +99,12 @@ function FlashcardScreen({ level, sessionId }) {
     return (
       <div style={{ padding: '20px' }}>
 
-        <p style={{ fontSize: '14px', color: '#666', marginBottom: '16px', lineHeight: '1.5' }}>
+        <p style={{ fontSize: '15px', color: '#666', marginBottom: '16px', lineHeight: '1.5' }}>
           Choose a topic and generate vocabulary cards.
           Flip each card to see the translation, then rate how well you knew it.
         </p>
 
-        <p style={{ fontSize: '13px', fontWeight: '500', marginBottom: '8px' }}>
+        <p style={{ fontSize: '15px', fontWeight: '500', marginBottom: '8px' }}>
           Choose a topic:
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
@@ -117,7 +119,7 @@ function FlashcardScreen({ level, sessionId }) {
                 borderColor:  topic === t ? '#500000' : '#e0e0e0',
                 background:   topic === t ? '#500000' : '#fff',
                 color:        topic === t ? '#fff'    : '#666',
-                fontSize:     '12px',
+                fontSize:     '14px',
                 cursor:       'pointer'
               }}
             >
@@ -126,19 +128,19 @@ function FlashcardScreen({ level, sessionId }) {
           ))}
         </div>
 
-        <p style={{ fontSize: '13px', fontWeight: '500', marginBottom: '8px' }}>
+        <p style={{ fontSize: '15px', fontWeight: '500', marginBottom: '8px' }}>
           Or type your own topic:
         </p>
         <input
           value={topic}
           onChange={e => setTopic(e.target.value)}
-          placeholder="e.g. animals, colors, emotions..."
+          placeholder={t.cardsTopicPlaceholder}
           style={{
             width:        '100%',
             padding:      '10px 14px',
             border:       '1px solid #e0e0e0',
             borderRadius: '10px',
-            fontSize:     '14px',
+            fontSize:     '15px',
             marginBottom: '20px',
             outline:      'none'
           }}
@@ -154,12 +156,12 @@ function FlashcardScreen({ level, sessionId }) {
             color:        '#fff',
             border:       'none',
             borderRadius: '12px',
-            fontSize:     '15px',
+            fontSize:     '16px',
             fontWeight:   '500',
             cursor:       loading ? 'not-allowed' : 'pointer'
           }}
         >
-          {loading ? 'Generating cards...' : 'Generate Cards'}
+          {loading ? t.generatingCards : t.generateCards}
         </button>
 
       </div>
@@ -173,10 +175,10 @@ function FlashcardScreen({ level, sessionId }) {
 
         <div style={{ fontSize: '40px', marginBottom: '12px' }}>🎉</div>
 
-        <p style={{ fontSize: '18px', fontWeight: '500', marginBottom: '6px' }}>
+        <p style={{ fontSize: '19px', fontWeight: '500', marginBottom: '6px' }}>
           Sesion completada!
         </p>
-        <p style={{ fontSize: '13px', color: '#666', marginBottom: '24px' }}>
+        <p style={{ fontSize: '15px', color: '#666', marginBottom: '24px' }}>
           You went through all {cards.length} cards
         </p>
 
@@ -188,7 +190,7 @@ function FlashcardScreen({ level, sessionId }) {
           ].map(s => (
             <div key={s.label} style={{ background: s.bg, borderRadius: '10px', padding: '12px' }}>
               <div style={{ fontSize: '22px', fontWeight: '600', color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: '12px', color: s.color }}>{s.label}</div>
+              <div style={{ fontSize: '14px', color: s.color }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -206,7 +208,7 @@ function FlashcardScreen({ level, sessionId }) {
             color:        '#fff',
             border:       'none',
             borderRadius: '12px',
-            fontSize:     '15px',
+            fontSize:     '16px',
             fontWeight:   '500',
             cursor:       'pointer'
           }}
@@ -224,10 +226,10 @@ function FlashcardScreen({ level, sessionId }) {
 
       {/* Progress indicator */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-        <span style={{ fontSize: '13px', color: '#666' }}>
-          {currentIndex + 1} of {cards.length}
+        <span style={{ fontSize: '15px', color: '#666' }}>
+          {currentIndex + 1} {t.of} {cards.length}
         </span>
-        <span style={{ fontSize: '13px', color: '#666' }}>
+        <span style={{ fontSize: '15px', color: '#666' }}>
           {topic}
         </span>
       </div>
@@ -257,11 +259,11 @@ function FlashcardScreen({ level, sessionId }) {
             <p style={{ fontSize: '28px', fontWeight: '600', color: '#333', marginBottom: '8px' }}>
               {card.word}
             </p>
-            <p style={{ fontSize: '13px', color: '#999' }}>Tap to see translation</p>
+            <p style={{ fontSize: '15px', color: '#999' }}>{t.tapToSeeTranslation}</p>
           </>
         ) : (
           <>
-            <p style={{ fontSize: '13px', color: '#500000', fontWeight: '500', marginBottom: '6px' }}>
+            <p style={{ fontSize: '15px', color: '#500000', fontWeight: '500', marginBottom: '6px' }}>
               TRANSLATION
             </p>
             <p style={{ fontSize: '22px', fontWeight: '600', color: '#333', marginBottom: '16px' }}>
@@ -270,7 +272,7 @@ function FlashcardScreen({ level, sessionId }) {
             {card.example && (
               <>
                 <div style={{ height: '1px', background: '#e0e0e0', width: '60%', marginBottom: '12px' }} />
-                <p style={{ fontSize: '13px', color: '#666', fontStyle: 'italic', lineHeight: '1.5' }}>
+                <p style={{ fontSize: '15px', color: '#666', fontStyle: 'italic', lineHeight: '1.5' }}>
                   "{card.example}"
                 </p>
               </>
@@ -294,11 +296,11 @@ function FlashcardScreen({ level, sessionId }) {
                 flex: 1, padding: '12px 6px',
                 background: btn.bg, border: `1px solid ${btn.border}`,
                 borderRadius: '12px', color: btn.color,
-                fontSize: '13px', fontWeight: '500', cursor: 'pointer'
+                fontSize: '15px', fontWeight: '500', cursor: 'pointer'
               }}
             >
               <div>{btn.label}</div>
-              <div style={{ fontSize: '11px', fontWeight: '400', marginTop: '2px' }}>{btn.hint}</div>
+              <div style={{ fontSize: '13px', fontWeight: '400', marginTop: '2px' }}>{btn.hint}</div>
             </button>
           ))}
         </div>

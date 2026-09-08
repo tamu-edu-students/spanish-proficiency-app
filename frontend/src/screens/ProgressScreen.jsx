@@ -122,7 +122,7 @@ function ProgressScreen({ level, sessionId }) {
       {/* Title */}
       <div style={{ marginBottom: '20px' }}>
         <p style={{ fontSize: '20px', fontWeight: '600', color: '#333' }}>Tu progreso</p>
-        <p style={{ fontSize: '13px', color: '#888', marginTop: '2px' }}>Keep practicing every day!</p>
+        <p style={{ fontSize: '15px', color: '#888', marginTop: '2px' }}>Keep practicing every day!</p>
       </div>
 
       {/* 4 stat cards */}
@@ -134,9 +134,9 @@ function ProgressScreen({ level, sessionId }) {
           { label: 'Current level', value: progress.level || level,                  unit: 'CEFR',    bg: '#E6F1FB', color: '#0C447C' },
         ].map(stat => (
           <div key={stat.label} style={{ background: stat.bg, borderRadius: '14px', padding: '16px' }}>
-            <p style={{ fontSize: '12px', color: stat.color, marginBottom: '6px', opacity: 0.8 }}>{stat.label}</p>
+            <p style={{ fontSize: '14px', color: stat.color, marginBottom: '6px', opacity: 0.8 }}>{stat.label}</p>
             <p style={{ fontSize: '26px', fontWeight: '700', color: stat.color, lineHeight: 1 }}>{stat.value}</p>
-            <p style={{ fontSize: '11px', color: stat.color, marginTop: '4px', opacity: 0.7 }}>{stat.unit}</p>
+            <p style={{ fontSize: '13px', color: stat.color, marginTop: '4px', opacity: 0.7 }}>{stat.unit}</p>
           </div>
         ))}
       </div>
@@ -144,8 +144,8 @@ function ProgressScreen({ level, sessionId }) {
       {/* CEFR level bar */}
       <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '14px', padding: '16px', marginBottom: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <p style={{ fontSize: '14px', fontWeight: '500', color: '#333' }}>CEFR Level</p>
-          <span style={{ background: '#f5f0f0', color: '#500000', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '500' }}>
+          <p style={{ fontSize: '15px', fontWeight: '500', color: '#333' }}>CEFR Level</p>
+          <span style={{ background: '#f5f0f0', color: '#500000', borderRadius: '20px', padding: '3px 10px', fontSize: '14px', fontWeight: '500' }}>
             {progress.level || level}
           </span>
         </div>
@@ -168,7 +168,7 @@ function ProgressScreen({ level, sessionId }) {
                   background: i <= levelIndex ? '#500000' : '#e0e0e0',
                   transition: 'all 0.3s', zIndex: 1
                 }} />
-                <span style={{ fontSize: '11px', color: i <= levelIndex ? '#500000' : '#bbb', fontWeight: i === levelIndex ? '700' : '400' }}>
+                <span style={{ fontSize: '13px', color: i <= levelIndex ? '#500000' : '#bbb', fontWeight: i === levelIndex ? '700' : '400' }}>
                   {l}
                 </span>
               </div>
@@ -176,7 +176,7 @@ function ProgressScreen({ level, sessionId }) {
           </div>
         </div>
 
-        <p style={{ fontSize: '12px', color: '#888' }}>
+        <p style={{ fontSize: '14px', color: '#888' }}>
           {levelIndex < cefrLevels.length - 1
             ? `Keep practicing to reach ${cefrLevels[levelIndex + 1]}!`
             : 'Felicidades! You have reached the highest level!'
@@ -186,7 +186,7 @@ function ProgressScreen({ level, sessionId }) {
 
       {/* This week calendar */}
       <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '14px', padding: '16px', marginBottom: '16px' }}>
-        <p style={{ fontSize: '14px', fontWeight: '500', color: '#333', marginBottom: '14px' }}>This week</p>
+        <p style={{ fontSize: '15px', fontWeight: '500', color: '#333', marginBottom: '14px' }}>This week</p>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           {weekDays.map(({ day, isPracticed, isFuture }) => (
             <div key={day} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
@@ -195,9 +195,9 @@ function ProgressScreen({ level, sessionId }) {
                 background: isFuture ? '#f5f5f5' : isPracticed ? '#500000' : '#f0f0f0',
                 display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}>
-                {!isFuture && isPracticed && <span style={{ color: '#fff', fontSize: '16px' }}>✓</span>}
+                {!isFuture && isPracticed && <span style={{ color: '#fff', fontSize: '17px' }}>✓</span>}
               </div>
-              <span style={{ fontSize: '11px', color: '#999' }}>{day}</span>
+              <span style={{ fontSize: '13px', color: '#999' }}>{day}</span>
             </div>
           ))}
         </div>
@@ -205,9 +205,9 @@ function ProgressScreen({ level, sessionId }) {
 
       {/* Recent activity */}
       <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '14px', padding: '16px' }}>
-        <p style={{ fontSize: '14px', fontWeight: '500', color: '#333', marginBottom: '12px' }}>Recent activity</p>
+        <p style={{ fontSize: '15px', fontWeight: '500', color: '#333', marginBottom: '12px' }}>Recent activity</p>
         {activities.length === 0 ? (
-          <p style={{ fontSize: '13px', color: '#999', textAlign: 'center', padding: '12px 0' }}>
+          <p style={{ fontSize: '15px', color: '#999', textAlign: 'center', padding: '12px 0' }}>
             No activity yet — start chatting, practicing flashcards, or taking a quiz!
           </p>
         ) : (
@@ -220,9 +220,9 @@ function ProgressScreen({ level, sessionId }) {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: activity.color, flexShrink: 0 }} />
-                <span style={{ fontSize: '13px', color: '#333' }}>{activity.label}</span>
+                <span style={{ fontSize: '15px', color: '#333' }}>{activity.label}</span>
               </div>
-              <span style={{ fontSize: '12px', color: '#999' }}>{formatTime(activity.time)}</span>
+              <span style={{ fontSize: '14px', color: '#999' }}>{formatTime(activity.time)}</span>
             </div>
           ))
         )}
