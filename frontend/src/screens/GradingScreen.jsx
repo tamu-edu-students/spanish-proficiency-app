@@ -6,6 +6,16 @@ const API = '/api'
 
 const MAROON = '#500000'
 
+// The BTLPT time-allowance sentence every writing prompt must end with, whether
+// generated or teacher-supplied, so students always see the same exam framing.
+const EXAM_NOTE_ES = ' (Tendrás aproximadamente 25 minutos para completar esta parte del examen de BTLPT.)'
+const EXAM_NOTE_EN = ' (You will have approximately 25 minutes to complete this part of the BTLPT exam.)'
+
+function withExamNote(text, note) {
+  if (!text) return text
+  return text.endsWith(note) ? text : text + note
+}
+
 // The task prompt is generated per student level, then sent back with the
 // answer so the grader scores against the prompt the student actually saw.
 function useTask(kind, level) {
@@ -19,7 +29,10 @@ function useTask(kind, level) {
     setLoading(true)
     try {
       const res = await axios.post(`${API}/grade/prompt/`, { kind, level })
-      setTask(res.data)
+      const data = res.data
+      setTask(kind === 'essay'
+        ? { spanish: withExamNote(data.spanish, EXAM_NOTE_ES), english: withExamNote(data.english, EXAM_NOTE_EN) }
+        : data)
     } catch {
       setTask({ spanish: 'No se pudo generar una pregunta. Inténtalo de nuevo.', english: '' })
     } finally {
@@ -145,18 +158,21 @@ const linkBtn = (enabled = true) => ({
   cursor: enabled ? 'pointer' : 'not-allowed', textDecoration: 'underline', padding: 0,
 })
 
-function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom }) {
+function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendExamNote, timerLabel }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft]     = useState('')
 
   function open() {
-    setDraft(custom?.spanish || '')
+    let d = custom?.spanish || ''
+    if (appendExamNote && d.endsWith(EXAM_NOTE_ES)) d = d.slice(0, -EXAM_NOTE_ES.length)
+    setDraft(d)
     setEditing(true)
   }
 
   function save() {
     // english stays empty — a teacher-written prompt is graded as given.
-    setCustom({ spanish: draft.trim(), english: '' })
+    const spanish = draft.trim()
+    setCustom({ spanish: appendExamNote ? withExamNote(spanish, EXAM_NOTE_ES) : spanish, english: '' })
     setEditing(false)
   }
 
@@ -204,6 +220,7 @@ function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom }) {
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', gap: '12px', flexWrap: 'wrap' }}>
         <span style={{ color: '#999', fontSize: '14px' }}>{note}</span>
+        {timerLabel && <span style={{ color: MAROON, fontSize: '14px', fontWeight: 600 }}>{timerLabel}</span>}
         <div style={{ display: 'flex', gap: '14px' }}>
           <button onClick={open} style={linkBtn()}>{t.ownPrompt}</button>
           {custom ? (
@@ -217,6 +234,12 @@ function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom }) {
   )
 }
 
+function formatTime(totalSeconds) {
+  const m = Math.floor(totalSeconds / 60)
+  const s = totalSeconds % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
 function EssayTab({ sessionId, level, onGraded, lang }) {
   const t = strings(lang)
   const { task, loading: taskLoading, newTask, custom, setCustom } = useTask('essay', level)
@@ -224,10 +247,26 @@ function EssayTab({ sessionId, level, onGraded, lang }) {
   const [loading, setLoading] = useState(false)
   const [result, setResult]   = useState(null)
   const [error, setError]     = useState('')
+  const [seconds, setSeconds] = useState(0)
+
+  const timerRef   = useRef(null)
+  const startedRef = useRef(false)
+
+  useEffect(() => () => clearInterval(timerRef.current), [])
 
   const words = essay.trim() ? essay.trim().split(/\s+/).length : 0
 
+  function handleEssayChange(e) {
+    const val = e.target.value
+    setEssay(val)
+    if (!startedRef.current && val.trim().length > 0) {
+      startedRef.current = true
+      timerRef.current = setInterval(() => setSeconds(s => s + 1), 1000)
+    }
+  }
+
   async function submit() {
+    clearInterval(timerRef.current)
     setLoading(true); setError(''); setResult(null)
     try {
       const res = await axios.post(`${API}/grade/essay/`, {
@@ -246,15 +285,23 @@ function EssayTab({ sessionId, level, onGraded, lang }) {
   }
 
   function tryAgain() {
+    clearInterval(timerRef.current)
+    startedRef.current = false
+    setSeconds(0)
     setEssay(''); setResult(null); setError('')
   }
 
   return (
     <>
-      <TaskPrompt task={task} note={t.noteEssay} loading={taskLoading} onNew={newTask} t={t} custom={custom} setCustom={setCustom} />
+      <TaskPrompt
+        task={task} note={t.noteEssay} loading={taskLoading} onNew={newTask} t={t}
+        custom={custom} setCustom={setCustom}
+        appendExamNote
+        timerLabel={`${t.yourTime}: ${formatTime(seconds)}`}
+      />
       <textarea
         value={essay}
-        onChange={e => setEssay(e.target.value)}
+        onChange={handleEssayChange}
         placeholder={t.essayPlaceholder}
         rows={12}
         style={{ width: '100%', marginTop: '12px', padding: '12px', border: '1px solid #e0e0e0', fontSize: '15px', lineHeight: 1.6, fontFamily: 'inherit', resize: 'vertical' }}
