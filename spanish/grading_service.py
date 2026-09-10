@@ -400,6 +400,23 @@ class AIGradingService:
                            conclusions, and 'por ejemplo' to introduce evidence")
                     - Feedback should read as constructive criticism that tells the student exactly what to do to reach the next level.
 
+                    FEEDBACK FORMAT (required):
+                    Write `feedback` as bullet points grouped under these three headings, in this order,
+                    with no paragraph text outside the bullets:
+
+                    Task Completion:
+                    - <bullet>
+                    - <bullet>
+                    Topic Development:
+                    - <bullet>
+                    Language Use:
+                    - <bullet>
+
+                    Rules: each heading on its own line ending with a colon; every bullet on its own line
+                    starting with "- "; 2-4 bullets per heading; one point per bullet, one or two sentences each.
+                    `feedback_spanish` uses the same structure with the headings translated
+                    (Cumplimiento de la tarea: / Desarrollo del tema: / Uso del lenguaje:).
+
                     Respond using the exact fields requested. Keep feedback and reasoning concise (under 150 words each).
                     Also provide:
                     - `feedback_spanish`: the exact same feedback translated into Spanish (same detail level, same content).
@@ -554,7 +571,11 @@ YOUR TASK:
 3. Evaluate on FIVE dimensions: Task Completion, Topic Development, Language Use, Fluency, Coherency.
 4. Assign scores (0-3) per dimension based on the rubric above — be strict and apply the "NOT a 3" disqualifiers.
 5. Provide concise feedback in English (under 200 words) with SPECIFIC examples from the transcription, addressing all five dimensions. Store this in the `feedback` field.
-6. Translate that same feedback into Spanish and store it in the `feedback_spanish` field (same content, same detail level, just in Spanish).
+   FORMAT: bullet points grouped under headings, no paragraph text outside the bullets. Each heading on its
+   own line ending with a colon, in this order — "Task Completion:", "Topic Development:", "Language Use:",
+   "Fluency:", "Coherency:" — and every bullet on its own line starting with "- " (2-4 bullets per heading).
+6. Translate that same feedback into Spanish and store it in the `feedback_spanish` field (same content, same
+   detail level, same bullet structure, headings translated).
 7. Assess confidence (0.0-1.0) for each score based on audio quality.
 8. Briefly explain your overall reasoning (under 100 words).
 9. Provide an English translation of the full transcription in the `transcription_english` field.

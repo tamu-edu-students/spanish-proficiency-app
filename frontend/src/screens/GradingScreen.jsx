@@ -75,6 +75,55 @@ function ScoreRow({ label, score, confidence, confLabel }) {
   )
 }
 
+// The grader's dimension headings, English and Spanish. Gemini frequently returns
+// the whole feedback with no newlines ("Task Completion:- ...Topic Development:- ..."),
+// so headings and bullets are broken onto their own lines before parsing.
+const FEEDBACK_HEADINGS = [
+  'Task Completion', 'Topic Development', 'Language Use', 'Fluency', 'Coherency',
+  'Cumplimiento de la tarea', 'Desarrollo del tema', 'Uso del lenguaje', 'Fluidez', 'Coherencia',
+]
+
+const normalizeFeedback = text => text
+  .replace(new RegExp(`\\s*(${FEEDBACK_HEADINGS.join('|')}):`, 'gi'), '\n$1:\n')
+  .replace(/([^\n])\s+[-*•]\s+/g, '$1\n- ')   // inline bullets onto their own line
+  .replace(/\n\s*[-*•]\s*/g, '\n- ')
+
+// Renders headings as small labels and bullets as a list. Feedback with neither
+// (older submissions) falls through as plain paragraphs.
+function Feedback({ text }) {
+  if (!text) return null
+  const blocks = []
+  for (const raw of normalizeFeedback(text).split('\n')) {
+    const line = raw.trim()
+    if (!line) continue
+    const bullet = line.match(/^[-*•]\s*(.*)/)
+    if (bullet) {
+      if (!bullet[1]) continue
+      if (blocks.at(-1)?.type !== 'list') blocks.push({ type: 'list', items: [] })
+      blocks.at(-1).items.push(bullet[1])
+    } else if (line.endsWith(':')) {
+      blocks.push({ type: 'heading', text: line.slice(0, -1) })
+    } else {
+      blocks.push({ type: 'para', text: line })
+    }
+  }
+  return (
+    <div style={{ fontSize: '15px', lineHeight: 1.6, marginTop: '12px' }}>
+      {blocks.map((b, i) => b.type === 'heading' ? (
+        <div key={i} style={{ fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '13px', color: MAROON, borderBottom: '1px solid #f0e8e8', paddingBottom: '3px', margin: i ? '16px 0 6px' : '0 0 6px' }}>
+          {b.text}
+        </div>
+      ) : b.type === 'list' ? (
+        <ul key={i} style={{ margin: '0 0 4px', paddingLeft: '20px' }}>
+          {b.items.map((item, j) => <li key={j} style={{ marginBottom: '5px' }}>{item}</li>)}
+        </ul>
+      ) : (
+        <p key={i} style={{ margin: '0 0 8px' }}>{b.text}</p>
+      ))}
+    </div>
+  )
+}
+
 function Results({ result, t, uiLang }) {
   const [lang, setLang] = useState(uiLang === 'es' ? 'es' : 'en')
   const scores = result.scores
@@ -121,9 +170,7 @@ function Results({ result, t, uiLang }) {
         ))}
       </div>
 
-      <p style={{ fontSize: '15px', lineHeight: 1.6, marginTop: '12px', whiteSpace: 'pre-wrap' }}>
-        {lang === 'es' ? result.feedback_spanish : result.feedback}
-      </p>
+      <Feedback text={lang === 'es' ? result.feedback_spanish : result.feedback} />
 
       {(result.reasoning || result.reasoning_spanish) && (
         <details style={{ marginTop: '12px', fontSize: '15px', color: '#555' }}>
@@ -145,6 +192,12 @@ function Results({ result, t, uiLang }) {
       )}
     </div>
   )
+}
+
+const outlineBtn = {
+  padding: '10px 24px', background: 'transparent', color: MAROON, border: `1px solid ${MAROON}`,
+  fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em',
+  fontSize: '14px', cursor: 'pointer',
 }
 
 const linkBtn = (enabled = true) => ({
@@ -297,6 +350,13 @@ function EssayTab({ sessionId, level, onGraded, lang }) {
     startedAt.current = null; setElapsed(0)
   }
 
+  // a fresh prompt clears the old attempt too; the task effect zeroes the clock
+  function newPrompt() {
+    setEssay(''); setResult(null); setError('')
+    if (custom) setCustom(null)
+    newTask()
+  }
+
   return (
     <>
       <TaskPrompt task={task} note={t.noteEssay} loading={taskLoading} onNew={newTask} t={t} custom={custom} setCustom={setCustom} />
@@ -332,13 +392,23 @@ function EssayTab({ sessionId, level, onGraded, lang }) {
       {result && (
         <>
           <Results result={result} t={t} uiLang={lang} />
-          <button
-            onClick={tryAgain}
-            title={t.tryAgainSamePrompt}
-            style={{ marginTop: '12px', padding: '10px 24px', background: 'transparent', color: MAROON, border: `1px solid ${MAROON}`, fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '14px', cursor: 'pointer' }}
-          >
-            {t.tryAgain}
-          </button>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '10px', marginTop: '12px' }}>
+            <button
+              onClick={tryAgain}
+              title={t.tryAgainSamePrompt}
+              style={outlineBtn}
+            >
+              {t.tryAgain}
+            </button>
+            <button
+              onClick={newPrompt}
+              disabled={taskLoading}
+              title={t.newPrompt}
+              style={{ ...outlineBtn, cursor: taskLoading ? 'not-allowed' : 'pointer', opacity: taskLoading ? 0.5 : 1 }}
+            >
+              {taskLoading ? t.generatingPrompt : t.newPrompt}
+            </button>
+          </div>
         </>
       )}
     </>
