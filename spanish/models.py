@@ -65,6 +65,8 @@ class Submission(models.Model):
     text        = models.TextField(blank=True)          # essay text, or audio transcription
     result      = models.JSONField()                    # full grading payload from Gemini
     total_score = models.IntegerField(default=0)
+    # null = attempted before timing existed, so no duration was ever recorded
+    duration_seconds = models.IntegerField(null=True, blank=True)
     created_at  = models.DateTimeField(auto_now_add=True)
 
     class Meta:

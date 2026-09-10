@@ -295,7 +295,7 @@ def get_progress_view(request):
 # ── Grading (BTLPT rubric, ported from spanish-grading-app) ──────
 
 
-def _save_submission(session_id, kind, task, text, result):
+def _save_submission(session_id, kind, task, text, result, duration_seconds=None):
     Submission.objects.create(
         session_id=session_id,
         kind=kind,
@@ -303,7 +303,18 @@ def _save_submission(session_id, kind, task, text, result):
         text=text,
         result=result,
         total_score=sum(result['scores'].values()),
+        duration_seconds=duration_seconds,
     )
+
+
+def _duration_from(request):
+    """Seconds the student spent on the attempt; None if the client didn't time it."""
+    try:
+        secs = int(request.data.get('duration_seconds'))
+    except (TypeError, ValueError):
+        return None
+    # ponytail: clamp to a day — a stale tab shouldn't record a 3-week essay.
+    return secs if 0 <= secs <= 86400 else None
 
 
 @api_view(['POST'])
@@ -336,7 +347,7 @@ def grade_essay_view(request):
 
         task = _task_from(request)
         result = call_with_retry(lambda: grading_service.service.grade_essay(essay, task))
-        _save_submission(get_session_id(request), 'essay', task or {}, essay, result)
+        _save_submission(get_session_id(request), 'essay', task or {}, essay, result, _duration_from(request))
         return Response(result)
 
     except Exception as e:
@@ -367,7 +378,7 @@ def grade_audio_view(request):
     try:
         task = _task_from(request)
         result = call_with_retry(lambda: grading_service.service.grade_audio(tmp_path, task))
-        _save_submission(get_session_id(request), 'audio', task or {}, result['transcription'], result)
+        _save_submission(get_session_id(request), 'audio', task or {}, result['transcription'], result, _duration_from(request))
         return Response(result)
     except Exception as e:
         print(f"Audio grading error: {e}")
@@ -390,5 +401,6 @@ def submissions_view(request):
         'text':        s.text,
         'result':      s.result,
         'total_score': s.total_score,
+        'duration_seconds': s.duration_seconds,
         'created_at':  s.created_at.isoformat(),
     } for s in subs]})

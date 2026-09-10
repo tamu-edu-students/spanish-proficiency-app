@@ -6,6 +6,13 @@ const API = '/api'
 
 const MAROON = '#500000'
 
+// mm:ss, or h:mm:ss past an hour
+const fmtDuration = secs => {
+  const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), sec = secs % 60
+  const pad = n => String(n).padStart(2, '0')
+  return h ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`
+}
+
 // The task prompt is generated per student level, then sent back with the
 // answer so the grader scores against the prompt the student actually saw.
 function useTask(kind, level) {
@@ -243,10 +250,30 @@ function EssayTab({ sessionId, level, onGraded, lang }) {
   const [loading, setLoading] = useState(false)
   const [result, setResult]   = useState(null)
   const [error, setError]     = useState('')
+  // ponytail: clock starts on the first keystroke; ticks 4x/sec so the display never lags a whole second.
+  const startedAt             = useRef(null)
+  const [elapsed, setElapsed] = useState(0)
+
+  // stops the moment Grade is clicked — grading time isn't the student's writing time
+  useEffect(() => {
+    if (loading || result) return
+    const id = setInterval(() => {
+      if (startedAt.current) setElapsed(Math.round((Date.now() - startedAt.current) / 1000))
+    }, 250)
+    return () => clearInterval(id)
+  }, [loading, result])
+
+  // a new prompt is a new attempt: clock back to zero, waiting for the first keystroke
+  useEffect(() => {
+    startedAt.current = null
+    setElapsed(0)
+  }, [task?.spanish])
 
   const words = essay.trim() ? essay.trim().split(/\s+/).length : 0
 
   async function submit() {
+    const secs = startedAt.current ? Math.round((Date.now() - startedAt.current) / 1000) : null
+    if (secs != null) setElapsed(secs)
     setLoading(true); setError(''); setResult(null)
     try {
       const res = await axios.post(`${API}/grade/essay/`, {
@@ -254,6 +281,7 @@ function EssayTab({ sessionId, level, onGraded, lang }) {
         session_id:   sessionId,
         task_spanish: task?.spanish,
         task_english: task?.english,
+        duration_seconds: secs,
       })
       setResult(res.data)
       onGraded()
@@ -266,15 +294,24 @@ function EssayTab({ sessionId, level, onGraded, lang }) {
 
   function tryAgain() {
     setEssay(''); setResult(null); setError('')
+    startedAt.current = null; setElapsed(0)
   }
 
   return (
     <>
       <TaskPrompt task={task} note={t.noteEssay} loading={taskLoading} onNew={newTask} t={t} custom={custom} setCustom={setCustom} />
-      <AccentBar />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+        <AccentBar />
+        <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: '18px', letterSpacing: '0.06em', color: MAROON, whiteSpace: 'nowrap' }}>
+          {fmtDuration(elapsed)}
+        </span>
+      </div>
       <textarea
         value={essay}
-        onChange={e => setEssay(e.target.value)}
+        onChange={e => {
+          if (!startedAt.current) startedAt.current = Date.now()
+          setEssay(e.target.value)
+        }}
         placeholder={t.essayPlaceholder}
         rows={12}
         style={{ width: '100%', padding: '12px', border: '1px solid #e0e0e0', fontSize: '15px', lineHeight: 1.6, fontFamily: 'inherit', resize: 'vertical' }}
@@ -444,6 +481,9 @@ function GradingScreen({ kind, sessionId, level, lang }) {
               <summary style={{ cursor: 'pointer' }}>
                 {s.total_score}/{Object.keys(s.result.scores).length * 3}
                 <span style={{ color: '#999' }}> · {new Date(s.created_at).toLocaleDateString()}</span>
+                {s.duration_seconds != null && (
+                  <span style={{ color: '#999' }}> · {t.timeSpent} {fmtDuration(s.duration_seconds)}</span>
+                )}
               </summary>
               {s.task?.spanish && (
                 <p style={{ marginTop: '8px', color: MAROON, fontSize: '14px' }}>{s.task.spanish}</p>
