@@ -145,6 +145,24 @@ const linkBtn = (enabled = true) => ({
   cursor: enabled ? 'pointer' : 'not-allowed', textDecoration: 'underline', padding: 0,
 })
 
+const SPECIAL_CHARS = ['á','é','í','ó','ú','ñ','ü','¿','¡','Á','É','Í','Ó','Ú','Ñ','Ü']
+
+// ponytail: userSelect 'all' per span — one click selects that single character, then cmd-C.
+function AccentBar() {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', margin: '12px 0 4px' }}>
+      {SPECIAL_CHARS.map(ch => (
+        <span
+          key={ch}
+          style={{ userSelect: 'all', cursor: 'text', minWidth: '30px', textAlign: 'center', padding: '4px 6px', background: '#faf8f8', border: '1px solid #f0e8e8', color: MAROON, fontSize: '17px', lineHeight: 1.2 }}
+        >
+          {ch}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft]     = useState('')
@@ -166,6 +184,7 @@ function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom }) {
         <p style={{ fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', color: MAROON, marginBottom: '8px' }}>
           {t.ownPromptTitle}
         </p>
+        <AccentBar />
         <textarea
           value={draft}
           onChange={e => setDraft(e.target.value)}
@@ -252,12 +271,13 @@ function EssayTab({ sessionId, level, onGraded, lang }) {
   return (
     <>
       <TaskPrompt task={task} note={t.noteEssay} loading={taskLoading} onNew={newTask} t={t} custom={custom} setCustom={setCustom} />
+      <AccentBar />
       <textarea
         value={essay}
         onChange={e => setEssay(e.target.value)}
         placeholder={t.essayPlaceholder}
         rows={12}
-        style={{ width: '100%', marginTop: '12px', padding: '12px', border: '1px solid #e0e0e0', fontSize: '15px', lineHeight: 1.6, fontFamily: 'inherit', resize: 'vertical' }}
+        style={{ width: '100%', padding: '12px', border: '1px solid #e0e0e0', fontSize: '15px', lineHeight: 1.6, fontFamily: 'inherit', resize: 'vertical' }}
       />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
         <span style={{ fontSize: '14px', color: words < 75 ? '#b06060' : '#5a8a5a' }}>
