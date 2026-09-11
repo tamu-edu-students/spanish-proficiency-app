@@ -20,26 +20,35 @@ const LEVELS = [
 
 const TAB_LABELS = {
   en: {
+    voice: 'Speaking',
+    reading: 'Reading',
+    writing: 'Writing',
+    // speaking: 'Graded Speaking',   // ponytail: hidden, uncomment to restore
     chat: 'Chat',
     flashcard: 'Cards',
     quiz: 'Grammar Quiz',
-    reading: 'Reading Comprehension',
-    writing: 'Graded Writing',
-    // speaking: 'Graded Speaking',   // ponytail: hidden, uncomment to restore
     progress: 'Progress',
-    voice: 'Voice',
   },
   es: {
+    voice: 'Expresión oral',
+    reading: 'Lectura',
+    writing: 'Escritura',
+    // speaking: 'Expresión oral calificada',
     chat: 'Chat',
     flashcard: 'Tarjetas',
     quiz: 'Prueba de gramática',
-    reading: 'Comprensión lectora',
-    writing: 'Escritura calificada',
-    // speaking: 'Expresión oral calificada',
     progress: 'Progreso',
-    voice: 'Voz',
   },
 }
+
+// Sidebar sections, in display order. Empty tabs[] renders a "coming soon" stub.
+const TAB_SECTIONS = [
+  { en: 'Listening', es: 'Comprensión auditiva', tabs: [] },
+  { en: 'Speaking',  es: 'Expresión oral',       tabs: ['voice'] },
+  { en: 'Reading',   es: 'Lectura',              tabs: ['reading'] },
+  { en: 'Writing',   es: 'Escritura',            tabs: ['writing'] },
+  { en: 'More',      es: 'Más',                  tabs: ['chat', 'flashcard', 'quiz', 'progress'] },
+]
 
 const LANGUAGE_TOGGLE_LABELS = {
   en: 'English',
@@ -272,14 +281,21 @@ function App() {
           <LevelSelect value={userLevel} onChange={setUserLevel} disabled={levelLocked} t={t} />
         </div>
 
-        {Object.keys(tabLabels).map(tabKey => (
-          <button
-            key={tabKey}
-            className={`tab-btn ${activeTab === tabKey ? 'active' : ''}`}
-            onClick={() => setActiveTab(tabKey)}
-          >
-            {tabLabels[tabKey]}
-          </button>
+        {TAB_SECTIONS.map(section => (
+          <div className="tab-section" key={section.en}>
+            <span className="tab-section-label">{section[labelLanguage] || section.en}</span>
+            {section.tabs.length === 0 ? (
+              <button className="tab-btn" disabled>{(section[labelLanguage] || section.en) + ' — ' + t.comingSoon}</button>
+            ) : section.tabs.map(tabKey => (
+              <button
+                key={tabKey}
+                className={`tab-btn ${activeTab === tabKey ? 'active' : ''}`}
+                onClick={() => setActiveTab(tabKey)}
+              >
+                {tabLabels[tabKey]}
+              </button>
+            ))}
+          </div>
         ))}
       </div>
 

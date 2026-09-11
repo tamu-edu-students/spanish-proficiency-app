@@ -334,6 +334,18 @@ body {
   }
 
   /* Desktop nav buttons */
+  .tab-section { display: block; }
+
+  .tab-section-label {
+    display: block;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #999;
+    padding: 14px 24px 4px;
+  }
+
   .tab-btn {
     flex: none;
     width: 100%;
@@ -369,3 +381,7 @@ body {
     height: 100dvh;
   }
 }
+/* Sidebar section headers (desktop sidebar only; mobile strip stays flat) */
+.tab-section { display: contents; }   /* mobile: keep buttons as flex items */
+.tab-section-label { display: none; }
+.tab-btn[disabled] { opacity: 0.45; cursor: default; }
