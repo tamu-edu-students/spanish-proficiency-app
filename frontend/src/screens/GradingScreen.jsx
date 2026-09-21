@@ -7,8 +7,8 @@ const API = '/api'
 const MAROON = '#500000'
 
 // The task prompt is generated per student level, then sent back with the
-// answer so the grader scores against the prompt the student actually saw.
-function useTask(kind, level) {
+// answer so the rater scores against the prompt the student actually saw.
+function useTask(kind, level, essayType) {
   const [task, setTask]       = useState(null)
   const [loading, setLoading] = useState(true)
   // A teacher-supplied prompt wins over the generated one. The backend already
@@ -18,14 +18,14 @@ function useTask(kind, level) {
   const newTask = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await axios.post(`${API}/grade/prompt/`, { kind, level })
+      const res = await axios.post(`${API}/grade/prompt/`, { kind, level, essay_type: essayType })
       setTask(res.data)
     } catch {
       setTask({ spanish: 'No se pudo generar una pregunta. Inténtalo de nuevo.', english: '' })
     } finally {
       setLoading(false)
     }
-  }, [kind, level])
+  }, [kind, level, essayType])
 
    
   useEffect(() => { newTask() }, [newTask])
@@ -66,6 +66,33 @@ function ScoreRow({ label, score, confidence, confLabel }) {
       </div>
     </div>
   )
+}
+
+function Feedback({ text }) {
+  const blocks = []
+  for (const raw of (text || '').split('\n')) {
+    const line = raw.trim()
+    if (!line) continue
+    if (!/^[-•*]\s+/.test(line) && line.endsWith(':')) {
+      blocks.push({ heading: line.slice(0, -1), items: [] })
+    } else {
+      if (!blocks.length) blocks.push({ heading: '', items: [] })
+      blocks[blocks.length - 1].items.push(line.replace(/^[-•*]\s+/, ''))
+    }
+  }
+
+  return blocks.map((block, i) => (
+    <div key={i} style={{ marginTop: i ? '14px' : '12px' }}>
+      {block.heading && (
+        <strong style={{ display: 'block', fontFamily: "'Oswald', sans-serif", fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.06em', color: MAROON }}>
+          {block.heading}
+        </strong>
+      )}
+      <ul style={{ margin: '6px 0 0', paddingLeft: '20px', fontSize: '15px', lineHeight: 1.6 }}>
+        {block.items.map((item, j) => <li key={j} style={{ marginBottom: '4px' }}>{item}</li>)}
+      </ul>
+    </div>
+  ))
 }
 
 function Results({ result, t, uiLang }) {
@@ -114,18 +141,7 @@ function Results({ result, t, uiLang }) {
         ))}
       </div>
 
-      <p style={{ fontSize: '15px', lineHeight: 1.6, marginTop: '12px', whiteSpace: 'pre-wrap' }}>
-        {lang === 'es' ? result.feedback_spanish : result.feedback}
-      </p>
-
-      {(result.reasoning || result.reasoning_spanish) && (
-        <details style={{ marginTop: '12px', fontSize: '15px', color: '#555' }}>
-          <summary style={{ cursor: 'pointer', color: MAROON }}>{t.graderReasoning}</summary>
-          <p style={{ marginTop: '8px', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-            {(lang === 'es' && result.reasoning_spanish) || result.reasoning}
-          </p>
-        </details>
-      )}
+      <Feedback text={lang === 'es' ? result.feedback_spanish : result.feedback} />
 
       {result.transcription && (
         <details style={{ marginTop: '8px', fontSize: '15px', color: '#555' }}>
@@ -198,8 +214,8 @@ function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom }) {
         <p style={{ color: '#888' }}>{t.generatingPrompt}</p>
       ) : (
         <>
-          <p style={{ color: MAROON }}>{task.spanish}</p>
-          {task.english && <p style={{ color: '#888', fontSize: '15px', marginTop: '6px' }}>{task.english}</p>}
+          <p style={{ color: MAROON, whiteSpace: 'pre-wrap' }}>{task.spanish}</p>
+          {task.english && <p style={{ color: '#888', fontSize: '15px', marginTop: '6px', whiteSpace: 'pre-wrap' }}>{task.english}</p>}
         </>
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', gap: '12px', flexWrap: 'wrap' }}>
@@ -217,9 +233,9 @@ function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom }) {
   )
 }
 
-function EssayTab({ sessionId, level, onGraded, lang }) {
+function EssayTab({ sessionId, level, onGraded, lang, essayType }) {
   const t = strings(lang)
-  const { task, loading: taskLoading, newTask, custom, setCustom } = useTask('essay', level)
+  const { task, loading: taskLoading, newTask, custom, setCustom } = useTask('essay', level, essayType)
   const [essay, setEssay]     = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult]   = useState(null)
@@ -235,6 +251,7 @@ function EssayTab({ sessionId, level, onGraded, lang }) {
         session_id:   sessionId,
         task_spanish: task?.spanish,
         task_english: task?.english,
+        essay_type:   essayType,
       })
       setResult(res.data)
       onGraded()
@@ -391,7 +408,7 @@ function AudioTab({ sessionId, level, onGraded, lang }) {
   )
 }
 
-function GradingScreen({ kind, sessionId, level, lang }) {
+function GradingScreen({ kind, sessionId, level, lang, essayType = 'opinion' }) {
   const t = strings(lang)
   const [history, setHistory] = useState([])
 
@@ -411,7 +428,7 @@ function GradingScreen({ kind, sessionId, level, lang }) {
     <div style={{ height: '100%', overflowY: 'auto', padding: '16px' }}>
 
       {kind === 'essay'
-        ? <EssayTab sessionId={sessionId} level={level} onGraded={loadHistory} lang={lang} />
+        ? <EssayTab sessionId={sessionId} level={level} onGraded={loadHistory} lang={lang} essayType={essayType} />
         : <AudioTab sessionId={sessionId} level={level} onGraded={loadHistory} lang={lang} />}
 
       {history.length > 0 && (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { Fragment, useState, useEffect } from 'react'
 import axios from 'axios'
 import ChatScreen      from './screens/ChatScreen'
 import FlashcardScreen from './screens/FlashcardScreen'
@@ -24,22 +24,30 @@ const TAB_LABELS = {
     flashcard: 'Cards',
     quiz: 'Grammar Quiz',
     reading: 'Reading Comprehension',
-    writing: 'Graded Writing',
-    // speaking: 'Graded Speaking',   // ponytail: hidden, uncomment to restore
-    progress: 'Progress',
+    writing: 'Writing',
+    speakingGroup: 'Speaking',
+    speaking: 'Graded Speaking',
     voice: 'Voice',
+    progress: 'Progress',
   },
   es: {
     chat: 'Chat',
     flashcard: 'Tarjetas',
     quiz: 'Prueba de gramática',
     reading: 'Comprensión lectora',
-    writing: 'Escritura calificada',
-    // speaking: 'Expresión oral calificada',
-    progress: 'Progreso',
+    writing: 'Escritura',
+    speakingGroup: 'Expresión oral',
+    speaking: 'Expresión oral calificada',
     voice: 'Voz',
+    progress: 'Progreso',
   },
 }
+
+const WRITING_TYPES = ['opinion', 'correspondence']
+
+// Sidebar order; the two group keys carry the nested tabs below them.
+const NAV = ['chat', 'flashcard', 'quiz', 'reading', 'writing', 'speakingGroup', 'progress']
+const SPEAKING_TABS = ['speaking', 'voice']
 
 const LANGUAGE_TOGGLE_LABELS = {
   en: 'English',
@@ -79,6 +87,7 @@ function LevelSelect({ value, onChange, disabled, t }) {
 
 function App() {
   const [activeTab, setActiveTab]       = useState('chat')
+  const [essayType, setEssayType]       = useState('opinion')
   const [userLevel, setUserLevel]       = useState('A1')
   const [user, setUser]                 = useState(null)
   const [checkingAuth, setCheckingAuth] = useState(true)
@@ -272,15 +281,42 @@ function App() {
           <LevelSelect value={userLevel} onChange={setUserLevel} disabled={levelLocked} t={t} />
         </div>
 
-        {Object.keys(tabLabels).map(tabKey => (
-          <button
-            key={tabKey}
-            className={`tab-btn ${activeTab === tabKey ? 'active' : ''}`}
-            onClick={() => setActiveTab(tabKey)}
-          >
-            {tabLabels[tabKey]}
-          </button>
-        ))}
+        {NAV.map(navKey => {
+          const isGroup  = navKey === 'speakingGroup'
+          const inGroup  = isGroup && SPEAKING_TABS.includes(activeTab)
+          const expanded = isGroup ? inGroup : activeTab === navKey
+
+          return (
+            <Fragment key={navKey}>
+              <button
+                className={`tab-btn ${expanded ? 'active' : ''}`}
+                onClick={() => setActiveTab(isGroup ? SPEAKING_TABS[0] : navKey)}
+              >
+                {tabLabels[navKey]}
+              </button>
+
+              {navKey === 'writing' && expanded && WRITING_TYPES.map(type => (
+                <button
+                  key={type}
+                  className={`tab-btn tab-subitem ${essayType === type ? 'active' : ''}`}
+                  onClick={() => setEssayType(type)}
+                >
+                  {type === 'opinion' ? t.taskTypeOpinion : t.taskTypeLetter}
+                </button>
+              ))}
+
+              {isGroup && inGroup && SPEAKING_TABS.map(tab => (
+                <button
+                  key={tab}
+                  className={`tab-btn tab-subitem ${activeTab === tab ? 'active' : ''}`}
+                  onClick={() => setActiveTab(tab)}
+                >
+                  {tabLabels[tab]}
+                </button>
+              ))}
+            </Fragment>
+          )
+        })}
       </div>
 
       {/* Main content */}
@@ -289,7 +325,7 @@ function App() {
         {activeTab === 'flashcard' && <FlashcardScreen level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
         {activeTab === 'quiz'      && <QuizScreen      level={userLevel} sessionId={SESSION_ID} quizType="grammar" lang={labelLanguage} />}
         {activeTab === 'reading'  && <QuizScreen      level={userLevel} sessionId={SESSION_ID} quizType="reading" lang={labelLanguage} />}
-        {activeTab === 'writing'   && <GradingScreen   kind="essay" level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
+        {activeTab === 'writing'   && <GradingScreen   kind="essay" essayType={essayType} level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
         {activeTab === 'speaking'  && <GradingScreen   kind="audio" level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
         {activeTab === 'progress'  && <ProgressScreen  level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
         {activeTab === 'voice'     && <VoiceScreen     level={userLevel} lang={labelLanguage} />}

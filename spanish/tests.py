@@ -182,7 +182,7 @@ class PromptBuilderTests(TestCase):
         self.assertNotIn(gs.DEFAULT_ORAL_TASK['spanish'], prompt)
 
     def test_prompts_warn_that_reference_examples_are_off_topic(self):
-        # The calibration anchors still mention uniforms/travel; the grader must
+        # The calibration anchors still mention uniforms/travel; the rater must
         # read them as severity anchors, not as topic requirements.
         for prompt in (self.service._build_essay_prompt('Hola.', TASK), self.service._build_audio_prompt(TASK)):
             self.assertIn('written for a different task', prompt)
@@ -318,12 +318,12 @@ class PromptEndpointTests(TestCase):
             res = self.client.post('/api/grade/prompt/', {'kind': 'audio', 'level': 'A2'})
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json(), task)
-        self.assertEqual(gen.call_args.args, ('audio', 'A2'))
+        self.assertEqual(gen.call_args.args, ('audio', 'A2', 'opinion'))
 
     def test_defaults_to_an_essay_at_b1(self):
         with patch('spanish.grading_service.service.generate_task', return_value=TASK) as gen:
             self.client.post('/api/grade/prompt/', {})
-        self.assertEqual(gen.call_args.args, ('essay', 'B1'))
+        self.assertEqual(gen.call_args.args, ('essay', 'B1', 'opinion'))
 
     def test_rejects_an_unknown_kind(self):
         res = self.client.post('/api/grade/prompt/', {'kind': 'video', 'level': 'A2'})
@@ -358,7 +358,7 @@ class EssayEndpointTests(TestCase):
         self.assertEqual(sub.task['spanish'], TASK['spanish'])
         self.assertEqual(sub.text, 'hola mundo')
 
-    def test_without_a_task_the_grader_uses_its_default(self):
+    def test_without_a_task_the_rater_uses_its_default(self):
         self.post()
         self.assertIsNone(self.grade.call_args.args[1])
 
@@ -476,3 +476,48 @@ class HistoryEndpointTests(TestCase):
         res = self.client.get('/api/grade/history/', {'session_id': 'nobody'})
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json()['submissions'], [])
+
+
+class EssayTypeTests(TestCase):
+    """The BTLPT written-task type picks the Task Completion / Topic Development rules."""
+
+    def setUp(self):
+        self.service = gs.AIGradingService()
+        self.service.client = MagicMock()
+
+    def _prompt(self, essay_type):
+        return self.service._build_essay_prompt('una dos tres', TASK, essay_type)
+
+    def test_opinion_prompt_demands_advantages_and_disadvantages(self):
+        prompt = self._prompt('opinion')
+        self.assertIn('2 distinct advantages', prompt)
+        self.assertNotIn('greeting', prompt)
+
+    def test_correspondence_prompt_demands_correspondence_form(self):
+        prompt = self._prompt('correspondence')
+        self.assertIn('letter, memo or email', prompt)
+        self.assertIn('greeting', prompt)
+        self.assertNotIn('2 distinct advantages', prompt)
+
+    def test_unknown_type_falls_back_to_the_opinion_essay(self):
+        self.assertEqual(self._prompt('nonsense'), self._prompt('opinion'))
+
+    def test_generated_task_follows_the_selected_type(self):
+        with patch.object(
+            self.service, '_generate',
+            return_value=SimpleNamespace(text=json.dumps({'spanish': 'a', 'english': 'b'}))
+        ) as gen:
+            self.service.generate_task('essay', 'B1', 'correspondence')
+        self.assertIn('letter, memo or email', gen.call_args.args[0])
+
+    def test_feedback_is_requested_per_dimension_with_the_reason_last(self):
+        for prompt in (self._prompt('opinion'), self.service._build_audio_prompt(TASK)):
+            self.assertIn('Task Completion:', prompt)
+            self.assertIn('Language Use:', prompt)
+            self.assertIn("LAST bullet", prompt)
+            self.assertIn("rater's reason", prompt)
+
+    def test_audio_feedback_covers_all_five_dimensions(self):
+        prompt = self.service._build_audio_prompt(TASK)
+        for heading in ('Task Completion:', 'Topic Development:', 'Language Use:', 'Fluency:', 'Coherency:'):
+            self.assertIn(heading, prompt)

@@ -75,7 +75,7 @@ Minimum word count: 75 words. There is no upper word limit.
 
 # The calibration anchors further down were written against the original fixed
 # prompts (school uniforms / travel). They stay verbatim — they set severity,
-# not topic — but the grader is told not to read them as topic requirements.
+# not topic — but the rater is told not to read them as topic requirements.
 ANCHOR_DISCLAIMER = """
 NOTE ON THE REFERENCE EXAMPLES BELOW: they were written for a different task
 prompt. Use them ONLY to calibrate how severe each score level is. Judge
@@ -102,75 +102,10 @@ LEVEL_GUIDANCE = {
 }
 
 
-class TaskPromptResponse(BaseModel):
-    """Schema for a generated task prompt."""
-    spanish: str
-    english: str
-
-
-# ---------------------------------------------------------------------------
-# Grading service
-# ---------------------------------------------------------------------------
-
-class AIGradingService:
-    """Service for AI-powered grading using Gemini."""
-
-    def __init__(self):
-        """Initialize the AI grading service."""
-        key = getattr(settings, "GEMINI_API_KEY", None)
-        self.client = genai.Client(api_key=key) if key else None
-        self.model_name = getattr(settings, "GEMINI_GRADING_MODEL", "gemini-2.5-flash")
-
-    # ------------------------------------------------------------------
-    # Prompt builders
-    # ------------------------------------------------------------------
-
-    def _build_essay_prompt(self, essay_text: str, task: dict) -> str:
-        """Build the grading prompt for written essay tasks."""
-        word_count = len(essay_text.split())
-
-        rubric_text = """
-            SCORE 3 — HIGH
-            Task Completion: Fully addresses and completes the task.
-            Topic Development: Directly relates to the topic; topic well developed; supporting details are appropriate,accurate and effective.
-            Language Use: Well organized and coherent; high degree of grammatical control; varied, precise vocabulary; very few spelling/punctuation errors; register appropriate.
-
-            SCORE 2 — MID-HIGH
-            Task Completion: Addresses and completes the task.
-            Topic Development: Relates to the topic; most supporting details are well defined.
-            Language Use: Organized but some parts not fully developed; moderate grammatical control; appropriate vocabulary with occasional errors; some spelling/punctuation errors that do not impede communication; register usually appropriate.
-
-            SCORE 1 — MID-LOW
-            Task Completion: Partially addresses the task; some required elements may be missing.
-            Topic Development: Moderately relates to the topic; some details are vague.
-            Language Use: Inadequately organized; frequent grammatical errors; limited vocabulary; frequent spelling/punctuation errors; register often inappropriate.
-
-            SCORE 0 — LOW
-            Task Completion: Partially addresses and/or partially completes the task.
-            Topic Development: Minimally relates to the topic; supporting details mostly irrelevant.
-            Language Use: Disorganized; numerous grammatical errors impede communication; insufficient vocabulary; pervasive spelling/punctuation errors.
-            """
-
-        return f"""You are a balanced Spanish language evaluator grading written essays for a BTLPT Spring Pre-Assessment.
-
-                    {ESSAY_TASK_TEMPLATE.format(**task)}
-
-                    STUDENT ESSAY (~{word_count} words):
-                    ---
-                    {essay_text}
-                    ---
-
-                    {rubric_text}
-
-                    GRADING PHILOSOPHY:
-                    - Grade fairly and accurately — follow the rubric closely. Do NOT automatically inflate scores.
-                    - A score of 0 is only for completely blank, entirely off-topic, or utterly incomprehensible responses.
-                    - Count advantages/disadvantages even if not formally labeled, but they must be clearly identifiable.
-                    - Word count is informational only — ignore it for scoring.
-
-                    HOW TO SCORE EACH DIMENSION — apply these PRECISELY:
-
-                    ── TASK COMPLETION ──
+# BTLPT written-task types. Only Task Completion / Topic Development differ;
+# Language Use and the calibration anchors are shared.
+ESSAY_TYPE_RULES = {
+    "opinion": """                    ── TASK COMPLETION ──
                     Score 3: Essay MUST have ALL of these:
                       (a) A clear stated position/opinion answering the question in the TASK PROMPT
                           (NOT just describing pros/cons without taking a side)
@@ -230,7 +165,139 @@ class AIGradingService:
                         • 0         → TD CANNOT exceed 1, even if every point is fully explained
                       This cap can only LOWER the TD score, never raise it. State the transition count
                       and the cap you applied in your reasoning, and if the cap lowered TD, the
-                      feedback must name the missing transitions and where they belong.
+                      feedback must name the missing transitions and where they belong.""",
+    "correspondence": """                    ── TASK COMPLETION ──
+                    The task is a WRITTEN RESPONSE to a letter, memo or email.
+                    Score 3: Response MUST have ALL of these:
+                      (a) Addresses EVERY question, request or issue raised in the original correspondence
+                      (b) States a clear answer, decision or position — not just acknowledgement
+                      (c) Uses correspondence form: an appropriate greeting, body, and closing/signature line
+                      (d) Register is consistently appropriate to the recipient (formal usted for a supervisor,
+                          parent or official; a personal register only if the prompt calls for it)
+                      ✗ NOT a 3 if: any question or request in the original message is left unanswered
+                      ✗ NOT a 3 if: greeting or closing is missing — correspondence form is part of the task
+                      ✗ NOT a 3 if: register slips (tú to an official, slang, or overly casual phrasing)
+                      ✗ NOT a 3 if: the response is under 75 words
+                    Score 2: Answers the correspondence and keeps the form, BUT:
+                      • One point is answered only briefly or vaguely
+                      • Greeting/closing present but perfunctory, or register wobbles once
+                    Score 1: ANY of these make it a Score 1:
+                      • Only some of the questions/requests are addressed
+                      • Written as a free-form paragraph with no greeting, closing, or recipient awareness
+                      • Register is wrong throughout for the stated recipient
+                    Score 0: Blank, completely off-topic, or incomprehensible
+
+                    ── TOPIC DEVELOPMENT ──
+                    Score 3: ALL of the following must be true:
+                      ✔ EVERY answer is supported with a specific reason, detail, next step or example
+                      ✔ Information given is accurate, relevant and sufficient for the recipient to act on
+                      ✔ Ideas are sequenced so the reader can follow the response to each point in turn
+                      ✗ NOT a 3 if: any point is answered with a bare phrase and no supporting reason
+                      ✗ NOT a 3 if: the reply is padded with courtesy formulas in place of content
+                    Score 2: Points are answered relevantly but at least one is thin or generic
+                    Score 1: Points are named/acknowledged without substance, or content is too vague to act on
+                    Score 0: No relevant content
+
+                    TRANSITION-WORD PENALTY — apply to TOPIC DEVELOPMENT after judging development:
+                      Count the DISTINCT transition words/phrases used to connect major ideas. Qualifying:
+                        "además," "asimismo," "igualmente," "por ejemplo," "es decir," "en particular,"
+                        "sin embargo," "no obstante," "a pesar de," "aunque," "por lo tanto," "por eso,"
+                        "debido a," "como resultado," "en conclusión," "en resumen," "finalmente"
+                      NOT qualifying: "y," "pero," "o," "también"
+                      Cap TD by the number of DISTINCT qualifying transitions:
+                        • 3 or more → no cap
+                        • 1–2       → TD CANNOT exceed 2
+                        • 0         → TD CANNOT exceed 1
+                      This cap can only LOWER the TD score. State the transition count and the cap you
+                      applied in your reasoning.""",
+}
+
+ESSAY_TYPE_SHAPES = {
+    "opinion": (
+        "an opinion question about a school, community or everyday policy — phrased so the "
+        "writer must take a side AND give at least two advantages and two disadvantages. "
+        "End the Spanish prompt with: 'Sustenta tus ideas indicando un mínimo de dos ventajas "
+        "y dos desventajas.'"
+    ),
+    "correspondence": (
+        "a short letter, memo or email ADDRESSED TO the student (from a principal, parent, "
+        "colleague or district office) that asks two or three specific questions or requests. "
+        "Quote the message in full, then instruct the student to write a reply in Spanish with "
+        "an appropriate greeting, answers to every point raised, and a closing."
+    ),
+}
+
+
+class TaskPromptResponse(BaseModel):
+    """Schema for a generated task prompt."""
+    spanish: str
+    english: str
+
+
+# ---------------------------------------------------------------------------
+# Grading service
+# ---------------------------------------------------------------------------
+
+class AIGradingService:
+    """Service for AI-powered grading using Gemini."""
+
+    def __init__(self):
+        """Initialize the AI grading service."""
+        key = getattr(settings, "GEMINI_API_KEY", None)
+        self.client = genai.Client(api_key=key) if key else None
+        self.model_name = getattr(settings, "GEMINI_GRADING_MODEL", "gemini-2.5-flash")
+
+    # ------------------------------------------------------------------
+    # Prompt builders
+    # ------------------------------------------------------------------
+
+    def _build_essay_prompt(self, essay_text: str, task: dict, essay_type: str = "opinion") -> str:
+        """Build the grading prompt for written essay tasks."""
+        word_count = len(essay_text.split())
+        tc_td = ESSAY_TYPE_RULES.get(essay_type, ESSAY_TYPE_RULES["opinion"])
+
+        rubric_text = """
+            SCORE 3 — HIGH
+            Task Completion: Fully addresses and completes the task.
+            Topic Development: Directly relates to the topic; topic well developed; supporting details are appropriate,accurate and effective.
+            Language Use: Well organized and coherent; high degree of grammatical control; varied, precise vocabulary; very few spelling/punctuation errors; register appropriate.
+
+            SCORE 2 — MID-HIGH
+            Task Completion: Addresses and completes the task.
+            Topic Development: Relates to the topic; most supporting details are well defined.
+            Language Use: Organized but some parts not fully developed; moderate grammatical control; appropriate vocabulary with occasional errors; some spelling/punctuation errors that do not impede communication; register usually appropriate.
+
+            SCORE 1 — MID-LOW
+            Task Completion: Partially addresses the task; some required elements may be missing.
+            Topic Development: Moderately relates to the topic; some details are vague.
+            Language Use: Inadequately organized; frequent grammatical errors; limited vocabulary; frequent spelling/punctuation errors; register often inappropriate.
+
+            SCORE 0 — LOW
+            Task Completion: Partially addresses and/or partially completes the task.
+            Topic Development: Minimally relates to the topic; supporting details mostly irrelevant.
+            Language Use: Disorganized; numerous grammatical errors impede communication; insufficient vocabulary; pervasive spelling/punctuation errors.
+            """
+
+        return f"""You are a balanced Spanish language evaluator grading written essays for a BTLPT Spring Pre-Assessment.
+
+                    {ESSAY_TASK_TEMPLATE.format(**task)}
+
+                    STUDENT ESSAY (~{word_count} words):
+                    ---
+                    {essay_text}
+                    ---
+
+                    {rubric_text}
+
+                    GRADING PHILOSOPHY:
+                    - Grade fairly and accurately — follow the rubric closely. Do NOT automatically inflate scores.
+                    - A score of 0 is only for completely blank, entirely off-topic, or utterly incomprehensible responses.
+                    - Count the required elements even if not formally labeled, but they must be clearly identifiable.
+                    - Word count is informational only — ignore it for scoring.
+
+                    HOW TO SCORE EACH DIMENSION — apply these PRECISELY:
+
+{tc_td}
 
                     ── LANGUAGE USE ──
                     Language Use is evaluated on THREE sub-dimensions — score ALL three before assigning the final LU score:
@@ -400,7 +467,26 @@ class AIGradingService:
                            conclusions, and 'por ejemplo' to introduce evidence")
                     - Feedback should read as constructive criticism that tells the student exactly what to do to reach the next level.
 
-                    Respond using the exact fields requested. Keep feedback and reasoning concise (under 150 words each).
+
+                    FEEDBACK FORMAT — write `feedback` EXACTLY in this shape, nothing before or after:
+                    Task Completion:
+                    - <what the essay did or failed to do, quoting it>
+                    - <the rater's reason for this score: the decisive evidence or cap that set it>
+                    Topic Development:
+                    - <...>
+                    - <the rater's reason for this score>
+                    Language Use:
+                    - <...>
+                    - <the rater's reason for this score>
+                    Rules for the format:
+                    - Use those three headings verbatim, each on its own line, each ending in a colon.
+                    - Every other line is a bullet starting with "- ". Two to four bullets per section.
+                    - The LAST bullet of every section is always the rater's reason for that dimension's score.
+                    - No score numbers in the bullets, no field names, no extra headings.
+                    - `feedback_spanish` follows the exact same structure with the headings
+                      "Task Completion:", "Topic Development:" and "Language Use:" kept in English.
+
+                    Respond using the exact fields requested. Keep feedback and reasoning concise (under 200 words each).
                     Also provide:
                     - `feedback_spanish`: the exact same feedback translated into Spanish (same detail level, same content).
                     - `reasoning_spanish`: the exact same reasoning translated into Spanish.
@@ -553,8 +639,28 @@ YOUR TASK:
 2. Carefully count errors in the transcription before assigning Language Use score.
 3. Evaluate on FIVE dimensions: Task Completion, Topic Development, Language Use, Fluency, Coherency.
 4. Assign scores (0-3) per dimension based on the rubric above — be strict and apply the "NOT a 3" disqualifiers.
-5. Provide concise feedback in English (under 200 words) with SPECIFIC examples from the transcription, addressing all five dimensions. Store this in the `feedback` field.
-6. Translate that same feedback into Spanish and store it in the `feedback_spanish` field (same content, same detail level, just in Spanish).
+5. Provide concise feedback in English (under 250 words) with SPECIFIC examples from the transcription,
+   in the `feedback` field, written EXACTLY in this shape and nothing else:
+   Task Completion:
+   - <what the response did or failed to do, quoting the transcription>
+   - <the rater's reason for this score: the decisive evidence or cap that set it>
+   Topic Development:
+   - <...>
+   - <the rater's reason for this score>
+   Language Use:
+   - <...>
+   - <the rater's reason for this score>
+   Fluency:
+   - <...>
+   - <the rater's reason for this score>
+   Coherency:
+   - <...>
+   - <the rater's reason for this score>
+   Rules: those five headings verbatim, each on its own line ending in a colon; every other line a bullet
+   starting with "- "; two to four bullets per section; the LAST bullet of each section is always the
+   rater's reason for that dimension's score; no score numbers, no field names, no extra headings.
+6. Translate that same feedback into Spanish in `feedback_spanish` — same structure, same bullet count,
+   headings kept in English.
 7. Assess confidence (0.0-1.0) for each score based on audio quality.
 8. Briefly explain your overall reasoning (under 100 words).
 9. Provide an English translation of the full transcription in the `transcription_english` field.
@@ -580,18 +686,13 @@ Respond using the exact fields requested.
             ),
         )
 
-    def generate_task(self, kind: str, level: str = "B1") -> dict:
+    def generate_task(self, kind: str, level: str = "B1", essay_type: str = "opinion") -> dict:
         """Generate a fresh, level-appropriate task prompt. Returns {spanish, english}."""
         if not self.client:
             return DEFAULT_ESSAY_TASK if kind == "essay" else DEFAULT_ORAL_TASK
 
         if kind == "essay":
-            shape = (
-                "an opinion question about a school, community or everyday policy — phrased so the "
-                "writer must take a side AND give at least two advantages and two disadvantages. "
-                "End the Spanish prompt with: 'Sustenta tus ideas indicando un mínimo de dos ventajas "
-                "y dos desventajas.'"
-            )
+            shape = ESSAY_TYPE_SHAPES.get(essay_type, ESSAY_TYPE_SHAPES["opinion"])
             example = DEFAULT_ESSAY_TASK["spanish"]
         else:
             shape = (
@@ -614,10 +715,10 @@ Return the prompt in Spanish, plus a faithful English translation."""
         task = TaskPromptResponse.model_validate_json(response.text)
         return {"spanish": task.spanish, "english": task.english}
 
-    def grade_essay(self, essay_text: str, task: dict = None) -> dict:
+    def grade_essay(self, essay_text: str, task: dict = None, essay_type: str = "opinion") -> dict:
         """Grade a written essay against its task prompt. Returns scores, feedback and confidence."""
         task = task or DEFAULT_ESSAY_TASK
-        response = self._generate(self._build_essay_prompt(essay_text, task), EssayGradingResponse)
+        response = self._generate(self._build_essay_prompt(essay_text, task, essay_type), EssayGradingResponse)
         g = EssayGradingResponse.model_validate_json(response.text)
         return {
             # Local count — Gemini's own count drifts on tokenisation.
