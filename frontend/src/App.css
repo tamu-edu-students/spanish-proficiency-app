@@ -385,3 +385,17 @@ body {
 .tab-section { display: contents; }   /* mobile: keep buttons as flex items */
 .tab-section-label { display: none; }
 .tab-btn[disabled] { opacity: 0.45; cursor: default; }
+
+/* Writing's two BTLPT task types, nested under it in the sidebar */
+.tab-subitem {
+  font-size: 12px;
+  padding-left: 28px;
+  opacity: 0.9;
+}
+
+@media (min-width: 900px) {
+  .tab-subitem {
+    font-size: 13.5px;
+    padding-left: 44px;
+  }
+}

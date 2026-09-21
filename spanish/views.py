@@ -325,10 +325,17 @@ def grade_prompt_view(request):
         return Response({'error': 'kind must be essay or audio'}, status=status.HTTP_400_BAD_REQUEST)
     try:
         level = request.data.get('level', 'B1')
-        return Response(call_with_retry(lambda: grading_service.service.generate_task(kind, level)))
+        essay_type = _essay_type(request)
+        return Response(call_with_retry(lambda: grading_service.service.generate_task(kind, level, essay_type)))
     except Exception as e:
         print(f"Prompt generation error: {e}")
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+def _essay_type(request):
+    """BTLPT written-task type; anything unknown falls back to the opinion essay."""
+    value = request.data.get('essay_type') or 'opinion'
+    return value if value in grading_service.ESSAY_TYPE_RULES else 'opinion'
 
 
 def _task_from(request):
@@ -346,7 +353,7 @@ def grade_essay_view(request):
             return Response({'error': 'No essay provided'}, status=status.HTTP_400_BAD_REQUEST)
 
         task = _task_from(request)
-        result = call_with_retry(lambda: grading_service.service.grade_essay(essay, task))
+        result = call_with_retry(lambda: grading_service.service.grade_essay(essay, task, _essay_type(request)))
         _save_submission(get_session_id(request), 'essay', task or {}, essay, result, _duration_from(request))
         return Response(result)
 

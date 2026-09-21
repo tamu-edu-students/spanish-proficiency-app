@@ -36,7 +36,7 @@ class Grade(BaseModel):
     scores: RubricScores = Field(..., description="Scores for each dimension")
     score_penalty: int = Field(default=0, ge=-9, le=0, description="Penalty applied to total score (0 = none, -1 = length violation)")
     comments: Optional[str] = Field(None, description="Additional feedback/comments")
-    grader_name: Optional[str] = Field(None, description="Name of the grader")
+    rater_name: Optional[str] = Field(None, description="Name of the rater")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
@@ -51,7 +51,7 @@ class Grade(BaseModel):
                     "language_use": 3
                 },
                 "comments": "Excellent conversational skills with minor hesitations.",
-                "grader_name": "Prof. Smith"
+                "rater_name": "Prof. Smith"
             }
         }
 
