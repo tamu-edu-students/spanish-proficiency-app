@@ -94,9 +94,21 @@ const normalizeFeedback = text => text
   .replace(/([^\n])\s+[-*•]\s+/g, '$1\n- ')   // inline bullets onto their own line
   .replace(/\n\s*[-*•]\s*/g, '\n- ')
 
-// Renders headings as small labels and bullets as a list. Feedback with neither
-// (older submissions) falls through as plain paragraphs.
-function Feedback({ text }) {
+// Maps a feedback heading (English or Spanish, as Gemini wrote it) back to its
+// key in the `scores` dict, so the score can be shown right next to that heading.
+const HEADING_TO_SCORE_KEY = {
+  'task completion':          'task_completion',
+  'topic development':        'topic_development',
+  'language use':             'language_use',
+  'cumplimiento de la tarea': 'task_completion',
+  'desarrollo del tema':      'topic_development',
+  'uso del lenguaje':         'language_use',
+}
+
+// Renders headings as small labels (with that dimension's score alongside, when
+// `scores` is given) and bullets as a list. Feedback with neither (older
+// submissions) falls through as plain paragraphs.
+function Feedback({ text, scores }) {
   if (!text) return null
   const blocks = []
   for (const raw of normalizeFeedback(text).split('\n')) {
@@ -115,17 +127,25 @@ function Feedback({ text }) {
   }
   return (
     <div style={{ fontSize: '15px', lineHeight: 1.6, marginTop: '12px' }}>
-      {blocks.map((b, i) => b.type === 'heading' ? (
-        <div key={i} style={{ fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '13px', color: MAROON, borderBottom: '1px solid #f0e8e8', paddingBottom: '3px', margin: i ? '16px 0 6px' : '0 0 6px' }}>
-          {b.text}
-        </div>
-      ) : b.type === 'list' ? (
-        <ul key={i} style={{ margin: '0 0 4px', paddingLeft: '20px' }}>
-          {b.items.map((item, j) => <li key={j} style={{ marginBottom: '5px' }}>{item}</li>)}
-        </ul>
-      ) : (
-        <p key={i} style={{ margin: '0 0 8px' }}>{b.text}</p>
-      ))}
+      {blocks.map((b, i) => {
+        if (b.type === 'heading') {
+          const scoreKey = HEADING_TO_SCORE_KEY[b.text.trim().toLowerCase()]
+          const score = scores && scoreKey ? scores[scoreKey] : undefined
+          return (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '13px', color: MAROON, borderBottom: '1px solid #f0e8e8', paddingBottom: '3px', margin: i ? '16px 0 6px' : '0 0 6px' }}>
+              <span>{b.text}</span>
+              {score != null && <span>{score}/3</span>}
+            </div>
+          )
+        }
+        return b.type === 'list' ? (
+          <ul key={i} style={{ margin: '0 0 4px', paddingLeft: '20px' }}>
+            {b.items.map((item, j) => <li key={j} style={{ marginBottom: '5px' }}>{item}</li>)}
+          </ul>
+        ) : (
+          <p key={i} style={{ margin: '0 0 8px' }}>{b.text}</p>
+        )
+      })}
     </div>
   )
 }
@@ -155,7 +175,7 @@ function ScoreBlock({ heading, scores, confidenceScores, feedback, feedbackSpani
         />
       ))}
 
-      <Feedback text={lang === 'es' ? feedbackSpanish : feedback} />
+      <Feedback text={lang === 'es' ? feedbackSpanish : feedback} scores={scores} />
     </div>
   )
 }
