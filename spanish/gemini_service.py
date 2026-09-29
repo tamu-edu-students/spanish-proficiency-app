@@ -282,6 +282,15 @@ Possible genres include:
 - cultural commentary
 - short opinion/informational piece
 
+Favor topics relevant to a bilingual educator in a Texas public school —
+e.g. reading development, family involvement in education, bilingual
+education, classroom strategies, notable Spanish-speaking writers/educators/
+historical figures, Hispanic cultural traditions or literature, or academic
+content-area subjects (science, social studies, geography, health) — while
+still varying the genre and topic from passage to passage. Not every passage
+needs to be school-related, but it should feel like something a bilingual
+teacher preparing for a Texas certification exam would plausibly read.
+
 Do NOT write a fictional story unless the topic naturally requires a
 narrative/biographical format.
 

@@ -103,8 +103,12 @@ ESSAY_TASK_TEMPLATE = """
 WRITING TASK PROMPT:
 {spanish}
 ({english})
-Minimum word count: 75 words. There is no upper word limit.
+Minimum word count: {word_min} words. There is no upper word limit.
 """
+
+# Per BTLPT written-task type — Lesson Plan needs more length to cover its five
+# required categories, matching the prep manual's 150-word target for that task.
+ESSAY_TYPE_WORD_MIN = {"opinion": 75, "correspondence": 75, "lesson_plan": 150}
 
 # The calibration anchors further down were written against the original fixed
 # prompts (school uniforms / travel). They stay verbatim — they set severity,
@@ -300,6 +304,64 @@ ESSAY_TYPE_RULES = {
                         • 0         → TD CANNOT exceed 1
                       This cap can only LOWER the TD score. State the transition count and the cap you
                       applied in your reasoning.""",
+    "lesson_plan": """                    ── TASK COMPLETION ──
+                    The task is a LESSON PLAN built around the given subject, topic and learning objective.
+                    Score 3: Lesson plan MUST have ALL of these:
+                      (a) All FIVE required categories present and clearly identifiable: Grado escolar (grade),
+                          Vocabulario (vocabulary), Materiales (materials), Procedimientos (procedures),
+                          Evaluación (evaluation/assessment)
+                      (b) Procedures are concrete, sequenced classroom steps — not a vague summary — and clearly
+                          work toward the stated learning objective
+                      (c) The evaluation actually measures whether students achieved the stated objective, not a
+                          generic "el maestro observará a los estudiantes" with no criteria
+                      ✗ NOT a 3 if: any of the five categories is missing entirely
+                      ✗ NOT a 3 if: procedures are so brief or generic they could apply to any lesson regardless
+                          of subject or objective (e.g., "el maestro explica el tema y los estudiantes practican")
+                      ✗ NOT a 3 if: the response is under 150 words — insufficient length to develop five categories
+                    Score 2: All five categories are present, BUT:
+                      • One or two categories are thin (e.g., materials or vocabulary is just a short list with no
+                        connection to the procedures)
+                      • Procedures connect to the objective but skip steps or lack sequencing
+                      • Evaluation is present but only loosely tied to the objective
+                    Score 1: ANY of these make it a Score 1:
+                      • One or more of the five required categories is missing
+                      • Procedures do not connect to the stated objective
+                      • Response reads as a general description of the topic rather than a lesson-plan structure
+                    Score 0: Blank, completely off-topic, or incomprehensible
+
+                    ── TOPIC DEVELOPMENT ──
+                    Score 3: ALL of the following must be true:
+                      ✔ Vocabulary list is specific to the subject/topic and useful for the stated objective —
+                          not generic classroom words
+                      ✔ Materials are specific and realistic for the activity described in procedures (not just
+                          "libro de texto, pizarrón" with no connection to what students will actually do)
+                      ✔ Procedures are elaborated with enough classroom detail that another teacher could follow
+                          them, and every step visibly serves the objective
+                      ✔ Evaluation states a clear method AND what counts as success against the objective
+                      ✗ NOT a 3 if: any category is a bare list with no explanation of how it is used in the lesson
+                      ✗ NOT a 3 if: procedures and evaluation are not visibly connected to the same objective
+                    Score 2: Categories are relevant and mostly clear, BUT at least one (vocabulary, materials,
+                      procedures or evaluation) is underdeveloped or only loosely connected to the objective
+                    Score 1: ANY of these:
+                      • Categories are named/listed without explanation of how they function in the lesson
+                      • Content is generic enough to fit almost any lesson on any topic
+                      • The objective is effectively ignored after being stated
+                    Score 0: No relevant content
+
+                    TRANSITION-WORD PENALTY — apply to TOPIC DEVELOPMENT after judging development:
+                      A lesson plan's procedures should read as a sequenced set of steps, so count the DISTINCT
+                      sequencing words/phrases used across the procedures section. Qualifying:
+                        "primero," "luego," "después," "a continuación," "seguidamente," "finalmente," "por
+                        último," "mientras," "antes de," "una vez que," "para," "con el fin de"
+                      NOT qualifying — these are coordination, not sequencing:
+                        "y," "pero," "o," "también"
+                      Cap TD by the number of DISTINCT qualifying sequencing words:
+                        • 3 or more → no cap
+                        • 1–2       → TD CANNOT exceed 2
+                        • 0         → TD CANNOT exceed 1
+                      This cap can only LOWER the TD score, never raise it. State the count and the cap you
+                      applied in your reasoning, and if the cap lowered TD, the feedback must name where
+                      sequencing language is missing from the procedures.""",
 }
 
 ESSAY_TYPE_SHAPES = {
@@ -315,6 +377,14 @@ ESSAY_TYPE_SHAPES = {
         "Quote the message in full, then instruct the student to write a reply in Spanish with "
         "an appropriate greeting, answers to every point raised, and a closing."
     ),
+    "lesson_plan": (
+        "a lesson-plan writing task for a bilingual classroom. Give a Subject/content area, a "
+        "specific Topic, and ONE measurable, action-oriented learning objective (the grade level "
+        "should be implied by or stated alongside the objective). Instruct the student to write a "
+        "lesson plan in Spanish covering all five required categories: Grado escolar (grade), "
+        "Vocabulario, Materiales, Procedimientos, and Evaluación — with the procedures clearly "
+        "working toward the objective and the evaluation measuring whether students achieved it."
+    ),
 }
 
 
@@ -323,35 +393,54 @@ ESSAY_TYPE_SHAPES = {
 # SHAPE (what generate_task asks Gemini to produce) differs per type.
 ORAL_TYPE_SHAPES = {
     "conversation": (
-        "a simulated 4-turn conversation script. Start with ONE short scenario-setup sentence "
-        "in Spanish naming who the student is talking to (e.g. a school principal, a parent, a "
-        "colleague, an interviewer) and the situation. Then write exactly 4 numbered lines — "
-        "'Turno 1' through 'Turno 4' — each ONE conversational question or remark spoken BY THE "
-        "OTHER PERSON (never the student), building naturally on the situation, with Turno 4 "
-        "including a closing farewell. Format the Spanish field EXACTLY as:\n"
-        "Escenario: <setup>\n\nTurno 1: <line>\nTurno 2: <line>\nTurno 3: <line>\nTurno 4: <line>\n"
-        "Do not write the student's responses — only the setup and the other person's 4 lines."
+        "a simulated 4-turn conversation script between the student (a bilingual teacher) and ONE "
+        "other person drawn from realistic BTLPT scenarios: a job fair/interview, a meeting with a "
+        "principal, a conversation with a parent, a discussion with a colleague, speaking with a "
+        "student, planning a school event, family engagement, or resolving a routine classroom "
+        "issue. Start with ONE short scenario-setup sentence in Spanish naming who the student is "
+        "talking to and the situation. Then write exactly 4 numbered lines — 'Turno 1' through "
+        "'Turno 4' — each ONE conversational question or remark spoken BY THE OTHER PERSON (never "
+        "the student), that progressively develop the situation so the student must: (1) provide "
+        "information, (2) explain or justify something, (3) respond to a follow-up, and (4) close "
+        "the interaction appropriately with Turno 4 including a farewell. Format the Spanish field "
+        "EXACTLY as:\nEscenario: <setup>\n\nTurno 1: <line>\nTurno 2: <line>\nTurno 3: <line>\n"
+        "Turno 4: <line>\nDo not write the student's responses — only the setup and the other "
+        "person's 4 lines."
     ),
     "qa": (
-        "a short scenario (2-3 sentences) about a school or work situation the student is "
-        "involved in, followed by exactly two RELATED questions a colleague or supervisor asks "
-        "about it: Question 1 is a direct opening question about the scenario, and Question 2 is "
-        "a deeper follow-up that builds on Question 1 by asking the student to justify a choice, "
-        "explain an implication, or address a complication. Each question needs a detailed "
-        "60-second spoken answer. Format the Spanish field EXACTLY as:\nEscenario: <setup>\n\n"
-        "Pregunta 1: <opening question>\n\nPregunta 2: <follow-up question>"
+        "a short bilingual-school scenario (2-3 sentences) about a topic such as a cultural "
+        "festival, parent involvement, a classroom project, a field trip, a school event, a "
+        "bilingual instructional strategy, student support, technology, a reading program, an "
+        "academic intervention, a classroom activity, a family workshop, or professional "
+        "development — followed by exactly two RELATED questions a colleague or supervisor asks "
+        "about it: Question 1 must require concrete details, examples, or a plan; Question 2 must "
+        "require an explanation of benefits, justification, or consequences that builds on "
+        "Question 1. Each question needs a detailed 60-second spoken answer. Format the Spanish "
+        "field EXACTLY as:\nEscenario: <setup>\n\nPregunta 1: <opening question>\n\n"
+        "Pregunta 2: <follow-up question>"
     ),
     "presentation": (
-        "a topic for a 2-minute oral presentation to an audience of students, teachers, or "
-        "parents, with 2-4 bullet points of supporting information the student should "
-        "incorporate. Format the Spanish field EXACTLY as:\nTema: <topic>\n\n"
-        "Información de apoyo:\n- <point>\n- <point>\n- <point>"
+        "a classroom-oriented oral-presentation task for a bilingual teacher. Give a Grade level, "
+        "a content-area Subject (history, science, mathematics, social studies, literature, "
+        "culture, geography, health, or environmental science), and an academic Topic within that "
+        "subject. Instruct the student to give a short presentation to their class that: "
+        "introduces the topic, explains 2-3 important ideas, provides an example, connects the "
+        "topic to the students, uses appropriate content-area vocabulary, and ends with a brief "
+        "transition or conclusion. Format the Spanish field EXACTLY as:\nGrado: <grade>\n"
+        "Tema: <topic>\n\nInformación de apoyo:\n- <point>\n- <point>\n- <point>"
     ),
     "situation": (
-        "a school or work-related dilemma or disagreement between two or more people, ending "
-        "with a sentence asking the student to state their opinion or proposed solution and "
-        "support it with at least two valid, convincing reasons in a 2-minute response. Format "
-        "the Spanish field EXACTLY as:\nSituación: <description>\n\n<closing instruction sentence>"
+        "a school or professional situation for a bilingual teacher involving TWO OR MORE "
+        "REASONABLE ALTERNATIVES (not simply a disagreement between people) — such as two "
+        "workshop formats, two approaches to classroom technology, two methods of organizing a "
+        "school event, different approaches to family communication, competing instructional "
+        "strategies, alternative student-support plans, classroom resource choices, scheduling "
+        "options, or methods of student assessment. End with a sentence asking the student to "
+        "(1) clearly state a preference or recommendation, (2) provide at least two convincing "
+        "reasons, (3) explain how the choice benefits students, families, teachers, or the "
+        "school, and (4) address the practical consequences of the recommendation, in a 2-minute "
+        "response. Do not make one option obviously correct. Format the Spanish field EXACTLY "
+        "as:\nSituación: <description>\n\n<closing instruction sentence>"
     ),
 }
 
@@ -366,12 +455,12 @@ ORAL_TYPE_DEFAULTS = {
         "english": "Scenario: You proposed organizing a Hispanic cultural festival at your school during a teacher meeting.\n\nQuestion 1: What activities would you include in the festival, and why?\n\nQuestion 2: How would you make sure all students can participate, including those with special needs?",
     },
     "presentation": {
-        "spanish": "Tema: Presente a su clase la importancia de la Independencia de México.\n\nInformación de apoyo:\n- El movimiento comenzó en 1810 con el Grito de Dolores.\n- México obtuvo su independencia de España en 1821.\n- La fecha se celebra cada 16 de septiembre con desfiles y festividades.",
-        "english": "Topic: Present to your class the importance of Mexican Independence.\n\nSupporting information:\n- The movement began in 1810 with the Grito de Dolores.\n- Mexico gained independence from Spain in 1821.\n- The date is celebrated every September 16th with parades and festivities.",
+        "spanish": "Grado: Quinto grado\nTema: Presente a su clase la importancia de la Independencia de México.\n\nInformación de apoyo:\n- El movimiento comenzó en 1810 con el Grito de Dolores.\n- México obtuvo su independencia de España en 1821.\n- La fecha se celebra cada 16 de septiembre con desfiles y festividades.",
+        "english": "Grade: Fifth grade\nTopic: Present to your class the importance of Mexican Independence.\n\nSupporting information:\n- The movement began in 1810 with the Grito de Dolores.\n- Mexico gained independence from Spain in 1821.\n- The date is celebrated every September 16th with parades and festivities.",
     },
     "situation": {
-        "spanish": "Situación: Dos maestros de su escuela no están de acuerdo sobre si se debe permitir el uso de celulares durante la clase. Uno cree que ayuda con la investigación; el otro cree que distrae a los estudiantes.\n\nSi le pidieran su opinión, ¿qué recomendaría? Justifique su respuesta con al menos dos razones válidas y convincentes.",
-        "english": "Situation: Two teachers at your school disagree about whether cell phones should be allowed during class. One believes it helps with research; the other believes it distracts students.\n\nIf asked for your opinion, what would you recommend? Justify your answer with at least two valid and convincing reasons.",
+        "spanish": "Situación: Su escuela planea un taller de matemáticas para familias y debe elegir entre dos formatos: uno en grupos pequeños por grado, y otro en una sola sesión general para todas las familias.\n\nSi le pidieran su opinión, ¿qué formato recomendaría? Justifique su respuesta con al menos dos razones válidas y convincentes.",
+        "english": "Situation: Your school is planning a family math workshop and must choose between two formats: small groups by grade level, or a single general session for all families.\n\nIf asked for your opinion, which format would you recommend? Justify your answer with at least two valid and convincing reasons.",
     },
 }
 
@@ -426,9 +515,10 @@ class AIGradingService:
             Language Use: Disorganized; numerous grammatical errors impede communication; insufficient vocabulary; pervasive spelling/punctuation errors.
             """
 
+        word_min = ESSAY_TYPE_WORD_MIN.get(essay_type, 75)
         return f"""You are a balanced Spanish language evaluator grading written essays for a BTLPT Spring Pre-Assessment.
 
-                    {ESSAY_TASK_TEMPLATE.format(**task)}
+                    {ESSAY_TASK_TEMPLATE.format(word_min=word_min, **task)}
 
                     STUDENT ESSAY (~{word_count} words):
                     ---

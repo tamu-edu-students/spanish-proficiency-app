@@ -173,7 +173,7 @@ function QuizScreen({ level, sessionId, lang, quizType = 'grammar' }) {
           Preparing your quiz...
         </p>
         <p style={{ fontSize: '15px', color: '#999' }}>
-          Gemini is generating 10 {level} level questions
+          Gemini is generating {totalQuestions} {level} level questions
         </p>
       </div>
     )

@@ -384,9 +384,17 @@ function maxScoreOf(result) {
   return Object.keys(result.scores).length * 3
 }
 
+// Word-count target and guidance note per BTLPT written-task type. Opinion and
+// Correspondence keep the app's original 75-word bar; Lesson Plan follows the
+// prep manual's 150-word target for that task specifically.
+const ESSAY_TYPE_WORD_MIN = { opinion: 75, correspondence: 75, lesson_plan: 150 }
+const ESSAY_TYPE_NOTE_KEY = { opinion: 'noteEssay', correspondence: 'noteEssay', lesson_plan: 'noteLessonPlan' }
+const ESSAY_TYPE_WORD_MIN_LABEL_KEY = { opinion: 'wordsMinimum', correspondence: 'wordsMinimum', lesson_plan: 'wordsMinimumLessonPlan' }
+
 function EssayTab({ sessionId, level, onGraded, lang, essayType }) {
   const t = strings(lang)
   const { task, loading: taskLoading, newTask, custom, setCustom } = useTask('essay', level, essayType)
+  const wordMin = ESSAY_TYPE_WORD_MIN[essayType] ?? 75
   const [essay, setEssay]     = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult]   = useState(null)
@@ -452,7 +460,7 @@ function EssayTab({ sessionId, level, onGraded, lang, essayType }) {
   return (
     <>
       <TaskPrompt
-        task={task} note={t.noteEssay} loading={taskLoading} onNew={newPrompt} t={t}
+        task={task} note={t[ESSAY_TYPE_NOTE_KEY[essayType] || 'noteEssay']} loading={taskLoading} onNew={newPrompt} t={t}
         custom={custom} setCustom={setCustom}
         appendExamNote
         timerLabel={`${t.yourTime}: ${formatTime(seconds)}`}
@@ -467,8 +475,8 @@ function EssayTab({ sessionId, level, onGraded, lang, essayType }) {
         style={{ width: '100%', padding: '12px', border: '1px solid #e0e0e0', fontSize: '15px', lineHeight: 1.6, fontFamily: 'inherit', resize: 'vertical' }}
       />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-        <span style={{ fontSize: '14px', color: words < 75 ? '#b06060' : '#5a8a5a' }}>
-          {words} {t.words} {words < 75 && t.wordsMinimum}
+        <span style={{ fontSize: '14px', color: words < wordMin ? '#b06060' : '#5a8a5a' }}>
+          {words} {t.words} {words < wordMin && t[ESSAY_TYPE_WORD_MIN_LABEL_KEY[essayType] || 'wordsMinimum']}
         </span>
         <button
           onClick={submit}

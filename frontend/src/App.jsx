@@ -53,8 +53,13 @@ const TAB_SECTIONS = [
   { en: 'More',      es: 'Más',                  tabs: ['chat', 'flashcard', 'quiz', 'progress'] },
 ]
 
-// Writing's BTLPT task types, nested under the Writing tab.
-const WRITING_TYPES = ['opinion', 'correspondence']
+// Writing's BTLPT task types (Domain IV), nested under the Writing tab.
+const WRITING_TYPES = ['opinion', 'correspondence', 'lesson_plan']
+const WRITING_TYPE_LABEL_KEY = {
+  opinion:        'taskTypeOpinion',
+  correspondence: 'taskTypeLetter',
+  lesson_plan:    'taskTypeLessonPlan',
+}
 
 // Oral Expression's BTLPT task types (Domain II), nested under the Oral tab,
 // each mapped to its sidebar label key in i18n.js. Q&A 1 and Q&A 2 share one
@@ -328,7 +333,7 @@ function App() {
                     className={`tab-btn tab-subitem ${essayType === type ? 'active' : ''}`}
                     onClick={() => setEssayType(type)}
                   >
-                    {type === 'opinion' ? t.taskTypeOpinion : t.taskTypeLetter}
+                    {t[WRITING_TYPE_LABEL_KEY[type]]}
                   </button>
                 ))}
                 {tabKey === 'oral' && activeTab === 'oral' && ORAL_TYPES.map(type => (
