@@ -261,9 +261,15 @@ function AccentBar() {
   )
 }
 
-function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendExamNote, timerLabel }) {
+// A1/A2 students can toggle the English translation of the question on or off;
+// B1/B2 never see it — the task prompt itself stays 100% Spanish at that level.
+const ENGLISH_TOGGLE_LEVELS = ['A1', 'A2']
+
+function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendExamNote, timerLabel, level }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft]     = useState('')
+  const [showEnglish, setShowEnglish] = useState(true)
+  const allowEnglishToggle = ENGLISH_TOGGLE_LEVELS.includes(level)
 
   function open() {
     let d = custom?.spanish || ''
@@ -319,7 +325,14 @@ function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendEx
       ) : (
         <>
           <p style={{ color: MAROON, whiteSpace: 'pre-wrap' }}>{task.spanish}</p>
-          {task.english && <p style={{ color: '#888', fontSize: '15px', marginTop: '6px', whiteSpace: 'pre-wrap' }}>{task.english}</p>}
+          {task.english && allowEnglishToggle && (
+            <>
+              {showEnglish && <p style={{ color: '#888', fontSize: '15px', marginTop: '6px', whiteSpace: 'pre-wrap' }}>{task.english}</p>}
+              <button onClick={() => setShowEnglish(s => !s)} style={{ ...linkBtn(), marginTop: '6px' }}>
+                {showEnglish ? t.hideTranslation : t.showTranslation}
+              </button>
+            </>
+          )}
         </>
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', gap: '12px', flexWrap: 'wrap' }}>
@@ -423,6 +436,7 @@ function EssayTab({ sessionId, level, onGraded, lang, essayType }) {
         custom={custom} setCustom={setCustom}
         appendExamNote
         timerLabel={`${t.yourTime}: ${formatTime(seconds)}`}
+        level={level}
       />
       <AccentBar />
       <textarea
@@ -576,7 +590,7 @@ function AudioTab({ sessionId, level, onGraded, lang, oralType }) {
 
   return (
     <>
-      <TaskPrompt task={displayTask} note={note} loading={taskLoading} onNew={newTask} t={t} custom={custom} setCustom={setCustom} />
+      <TaskPrompt task={displayTask} note={note} loading={taskLoading} onNew={newTask} t={t} custom={custom} setCustom={setCustom} level={level} />
 
       {oralType === 'qa' && qaSpanish && qaStage === 1 && (
         <div style={{ marginTop: '10px' }}>
