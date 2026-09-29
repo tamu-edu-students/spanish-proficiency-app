@@ -150,6 +150,76 @@ function Feedback({ text, scores }) {
   )
 }
 
+// Renders **bold** inline within a line of text. The generated task prompts
+// occasionally come back with light markdown (Gemini's own choice, not ours) —
+// this is the only markdown span worth supporting here.
+function renderMarkdownInline(text) {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) => {
+    const bold = part.match(/^\*\*([^*]+)\*\*$/)
+    return bold ? <strong key={i}>{bold[1]}</strong> : <span key={i}>{part}</span>
+  })
+}
+
+// Groups a task prompt's lines into paragraphs (line breaks within a blank-line-
+// separated group stay as <br/>) and bullet/numbered lists, so markdown that
+// Gemini sometimes adds (bold labels, numbered category lists) renders properly
+// instead of showing literal **/1. characters.
+function parseMarkdownLite(text) {
+  const blocks = []
+  let paraLines = []
+  const flushPara = () => {
+    if (paraLines.length) blocks.push({ type: 'p', lines: paraLines })
+    paraLines = []
+  }
+  for (const raw of text.split('\n')) {
+    const line = raw.trim()
+    if (!line) { flushPara(); continue }
+    const bullet = line.match(/^[-*•]\s+(.*)/)
+    const numbered = line.match(/^\d+\.\s+(.*)/)
+    if (bullet) {
+      flushPara()
+      if (blocks.at(-1)?.type !== 'ul') blocks.push({ type: 'ul', items: [] })
+      blocks.at(-1).items.push(bullet[1])
+    } else if (numbered) {
+      flushPara()
+      if (blocks.at(-1)?.type !== 'ol') blocks.push({ type: 'ol', items: [] })
+      blocks.at(-1).items.push(numbered[1])
+    } else {
+      paraLines.push(line)
+    }
+  }
+  flushPara()
+  return blocks
+}
+
+function MarkdownLite({ text, style }) {
+  if (!text) return null
+  return (
+    <div style={style}>
+      {parseMarkdownLite(text).map((b, i) => {
+        if (b.type === 'ul' || b.type === 'ol') {
+          const Tag = b.type
+          return (
+            <Tag key={i} style={{ margin: '0 0 8px', paddingLeft: '22px' }}>
+              {b.items.map((item, j) => <li key={j} style={{ marginBottom: '3px' }}>{renderMarkdownInline(item)}</li>)}
+            </Tag>
+          )
+        }
+        return (
+          <p key={i} style={{ margin: '0 0 8px' }}>
+            {b.lines.map((line, j) => (
+              <span key={j}>
+                {renderMarkdownInline(line)}
+                {j < b.lines.length - 1 && <br />}
+              </span>
+            ))}
+          </p>
+        )
+      })}
+    </div>
+  )
+}
+
 // One dimension group's scores + feedback. `heading` labels it (e.g. "Question 1")
 // when several of these appear in one Results block (the 'qa' two-question task);
 // omitted for the single-question tasks that only ever show one block.
@@ -344,10 +414,10 @@ function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendEx
         <p style={{ color: '#888' }}>{t.generatingPrompt}</p>
       ) : (
         <>
-          <p style={{ color: MAROON, whiteSpace: 'pre-wrap' }}>{task.spanish}</p>
+          <MarkdownLite text={task.spanish} style={{ color: MAROON }} />
           {task.english && allowEnglishToggle && (
             <>
-              {showEnglish && <p style={{ color: '#888', fontSize: '15px', marginTop: '6px', whiteSpace: 'pre-wrap' }}>{task.english}</p>}
+              {showEnglish && <MarkdownLite text={task.english} style={{ color: '#888', fontSize: '15px', marginTop: '6px' }} />}
               <button onClick={() => setShowEnglish(s => !s)} style={{ ...linkBtn(), marginTop: '6px' }}>
                 {showEnglish ? t.hideTranslation : t.showTranslation}
               </button>
@@ -702,7 +772,7 @@ function GradingScreen({ kind, sessionId, level, lang, essayType = 'opinion', or
                 )}
               </summary>
               {s.task?.spanish && (
-                <p style={{ marginTop: '8px', color: MAROON, fontSize: '14px' }}>{s.task.spanish}</p>
+                <MarkdownLite text={s.task.spanish} style={{ marginTop: '8px', color: MAROON, fontSize: '14px' }} />
               )}
               <p style={{ marginTop: '8px', color: '#666', lineHeight: 1.6 }}>{s.text}</p>
               <Results result={s.result} t={t} uiLang={lang} />
