@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import axios from 'axios'
 import { strings } from '../i18n'
+import { TOPICS } from '../topics'
 
 const API = '/api'
 
@@ -9,16 +10,10 @@ function FlashcardScreen({ level, sessionId, lang }) {
   const [cards, setCards]               = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [flipped, setFlipped]           = useState(false)
-  const [topic, setTopic]               = useState('daily life')
+  const [topic, setTopic]               = useState(TOPICS[0])
   const [loading, setLoading]           = useState(false)
   const [done, setDone]                 = useState(false)
   const [score, setScore]               = useState({ good: 0, hard: 0, again: 0 })
-
-  const topics = [
-    'daily life', 'food & drink', 'travel',
-    'work & office', 'family', 'weather',
-    'sports', 'technology', 'shopping', 'health'
-  ]
 
   async function generateCards() {
     setLoading(true)
@@ -108,7 +103,7 @@ function FlashcardScreen({ level, sessionId, lang }) {
           Choose a topic:
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
-          {topics.map(t => (
+          {TOPICS.map(t => (
             <button
               key={t}
               onClick={() => setTopic(t)}

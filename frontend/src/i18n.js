@@ -69,7 +69,7 @@ const STRINGS = {
     // ── flashcards ──
     generateCards:       'Generate Cards',
     generatingCards:     'Generating cards...',
-    cardsTopicPlaceholder: 'e.g. animals, colors, emotions...',
+    cardsTopicPlaceholder: 'e.g. Classroom Management, IEPs, Vocabulary...',
     tapToSeeTranslation: 'Tap to see translation',
     of:                  'of',
 
@@ -165,7 +165,7 @@ const STRINGS = {
     // ── flashcards ──
     generateCards:       'Generar tarjetas',
     generatingCards:     'Generando tarjetas...',
-    cardsTopicPlaceholder: 'p. ej. animales, colores, emociones...',
+    cardsTopicPlaceholder: 'p. ej. Manejo del aula, IEPs, Vocabulario...',
     tapToSeeTranslation: 'Toca para ver la traducción',
     of:                  'de',
 

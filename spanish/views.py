@@ -73,6 +73,7 @@ def chat_view(request):
     try:
         messages = request.data.get('messages', [])
         level    = request.data.get('level', 'B1')
+        topic    = request.data.get('topic') or None
         is_voice = request.data.get('session_id') == 'voice_user'
 
         if not messages:
@@ -81,7 +82,7 @@ def chat_view(request):
         if is_voice:
             reply = call_with_retry(lambda: gemini_service.voice_chat(messages, level))
         else:
-            reply = call_with_retry(lambda: gemini_service.chat(messages, level))
+            reply = call_with_retry(lambda: gemini_service.chat(messages, level, topic))
 
         return Response({'reply': reply})
 

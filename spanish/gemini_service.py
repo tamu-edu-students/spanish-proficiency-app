@@ -3,13 +3,14 @@ from google import genai
 from google.genai import types
 
 
-def build_system_prompt(level="B1", mode="chat"):
+def build_system_prompt(level="B1", mode="chat", topic=None):
     guidance = {
         "A1": "Use very basic Spanish. Very short sentences. Always add English translation in parentheses after each Spanish word or phrase.",
         "A2": "Use simple Spanish. Common everyday words. Occasionally add English hints in parentheses for difficult words.",
         "B1": "Use intermediate Spanish. Full sentences with common verb tenses. No English hints.",
         "B2": "Use rich Spanish vocabulary. Complex sentences, subjunctive mood, idioms. No English at all.",
     }
+    topic_rule = f"\n8. Keep the conversation focused on this topic: {topic}. Steer your questions and vocabulary toward it." if topic else ""
     return f"""You are a friendly Spanish tutor.
 RULES:
 1. ALWAYS respond in Spanish, never in English.
@@ -18,10 +19,10 @@ RULES:
 4. Correct grammar gently with "Correccion:" at the end if needed.
 5. Keep replies to 1-3 sentences.
 6. Ask a follow-up question to keep conversation going.
-7. Be encouraging and patient."""
+7. Be encouraging and patient.{topic_rule}"""
 
 
-def chat(messages, level="B1"):
+def chat(messages, level="B1", topic=None):
     client = genai.Client(api_key=settings.GEMINI_API_KEY)
     contents = []
     for msg in messages:
@@ -33,7 +34,7 @@ def chat(messages, level="B1"):
         model="gemini-2.5-flash-lite",
         contents=contents,
         config=types.GenerateContentConfig(
-            system_instruction=build_system_prompt(level),
+            system_instruction=build_system_prompt(level, topic=topic),
             temperature=0.7,
         )
     )
