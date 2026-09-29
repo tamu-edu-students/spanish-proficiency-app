@@ -24,6 +24,7 @@ const TAB_LABELS = {
     reading: 'Reading',
     writing: 'Writing',
     speaking: 'Graded Speaking',
+    oral: 'Oral Tasks',
     chat: 'Chat',
     flashcard: 'Cards',
     quiz: 'Grammar Quiz',
@@ -34,6 +35,7 @@ const TAB_LABELS = {
     reading: 'Lectura',
     writing: 'Escritura',
     speaking: 'Expresión oral calificada',
+    oral: 'Tareas orales',
     chat: 'Chat',
     flashcard: 'Tarjetas',
     quiz: 'Prueba de gramática',
@@ -45,6 +47,7 @@ const TAB_LABELS = {
 const TAB_SECTIONS = [
   { en: 'Listening', es: 'Comprensión auditiva', tabs: [] },
   { en: 'Speaking',  es: 'Expresión oral',       tabs: ['speaking', 'voice'] },
+  { en: 'BTLPT Oral Exam', es: 'Examen Oral BTLPT', tabs: ['oral'] },
   { en: 'Reading',   es: 'Lectura',              tabs: ['reading'] },
   { en: 'Writing',   es: 'Escritura',            tabs: ['writing'] },
   { en: 'More',      es: 'Más',                  tabs: ['chat', 'flashcard', 'quiz', 'progress'] },
@@ -52,6 +55,17 @@ const TAB_SECTIONS = [
 
 // Writing's BTLPT task types, nested under the Writing tab.
 const WRITING_TYPES = ['opinion', 'correspondence']
+
+// Oral Expression's BTLPT task types (Domain II), nested under the Oral tab,
+// each mapped to its sidebar label key in i18n.js. Q&A 1 and Q&A 2 share one
+// tab — same scenario, two related questions answered in a single recording.
+const ORAL_TYPES = ['conversation', 'qa', 'presentation', 'situation']
+const ORAL_TYPE_LABEL_KEY = {
+  conversation: 'oralTypeConversation',
+  qa:           'oralTypeQA',
+  presentation: 'oralTypePresentation',
+  situation:    'oralTypeSituation',
+}
 
 const LANGUAGE_TOGGLE_LABELS = {
   en: 'English',
@@ -92,6 +106,7 @@ function LevelSelect({ value, onChange, disabled, t }) {
 function App() {
   const [activeTab, setActiveTab]       = useState('chat')
   const [essayType, setEssayType]       = useState('opinion')
+  const [oralType, setOralType]         = useState('conversation')
   const [userLevel, setUserLevel]       = useState('A1')
   const [user, setUser]                 = useState(null)
   const [checkingAuth, setCheckingAuth] = useState(true)
@@ -307,6 +322,15 @@ function App() {
                     {type === 'opinion' ? t.taskTypeOpinion : t.taskTypeLetter}
                   </button>
                 ))}
+                {tabKey === 'oral' && activeTab === 'oral' && ORAL_TYPES.map(type => (
+                  <button
+                    key={type}
+                    className={`tab-btn tab-subitem ${oralType === type ? 'active' : ''}`}
+                    onClick={() => setOralType(type)}
+                  >
+                    {t[ORAL_TYPE_LABEL_KEY[type]]}
+                  </button>
+                ))}
               </Fragment>
             ))}
           </div>
@@ -320,8 +344,12 @@ function App() {
         {activeTab === 'flashcard' && <FlashcardScreen level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
         {activeTab === 'quiz'      && <QuizScreen      level={userLevel} sessionId={SESSION_ID} quizType="grammar" lang={labelLanguage} />}
         {activeTab === 'reading'  && <QuizScreen      level={userLevel} sessionId={SESSION_ID} quizType="reading" lang={labelLanguage} />}
-        {activeTab === 'writing'   && <GradingScreen   kind="essay" essayType={essayType} level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
+        {/* key={essayType}/{oralType} forces a full remount on subsection switch — otherwise
+            the same EssayTab/AudioTab instance stays mounted and carries over its draft
+            text/recording from the previous task type. */}
+        {activeTab === 'writing'   && <GradingScreen   key={essayType} kind="essay" essayType={essayType} level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
         {activeTab === 'speaking'  && <GradingScreen   kind="audio" level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
+        {activeTab === 'oral'      && <GradingScreen   key={oralType} kind="audio" oralType={oralType} level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
         {activeTab === 'progress'  && <ProgressScreen  level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
         {activeTab === 'voice'     && <VoiceScreen     level={userLevel} lang={labelLanguage} />}
       </div>

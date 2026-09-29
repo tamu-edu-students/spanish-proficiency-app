@@ -295,6 +295,14 @@ def get_progress_view(request):
 # ── Grading (BTLPT rubric, ported from spanish-grading-app) ──────
 
 
+def _total_score(result):
+    """Sum of all scored dimensions. The 'qa' oral task scores two questions
+    separately (result['questions']) instead of one flat result['scores']."""
+    if 'questions' in result:
+        return sum(sum(q['scores'].values()) for q in result['questions'])
+    return sum(result['scores'].values())
+
+
 def _save_submission(session_id, kind, task, text, result, duration_seconds=None):
     Submission.objects.create(
         session_id=session_id,
@@ -302,7 +310,7 @@ def _save_submission(session_id, kind, task, text, result, duration_seconds=None
         task=task,
         text=text,
         result=result,
-        total_score=sum(result['scores'].values()),
+        total_score=_total_score(result),
         duration_seconds=duration_seconds,
     )
 
@@ -326,7 +334,8 @@ def grade_prompt_view(request):
     try:
         level = request.data.get('level', 'B1')
         essay_type = _essay_type(request)
-        return Response(call_with_retry(lambda: grading_service.service.generate_task(kind, level, essay_type)))
+        oral_type = request.data.get('oral_type') or None
+        return Response(call_with_retry(lambda: grading_service.service.generate_task(kind, level, essay_type, oral_type)))
     except Exception as e:
         print(f"Prompt generation error: {e}")
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -384,7 +393,11 @@ def grade_audio_view(request):
         tmp_path = tmp.name
     try:
         task = _task_from(request)
-        result = call_with_retry(lambda: grading_service.service.grade_audio(tmp_path, task))
+        oral_type = request.data.get('oral_type') or None
+        if oral_type == 'qa':
+            result = call_with_retry(lambda: grading_service.service.grade_audio_qa(tmp_path, task))
+        else:
+            result = call_with_retry(lambda: grading_service.service.grade_audio(tmp_path, task))
         _save_submission(get_session_id(request), 'audio', task or {}, result['transcription'], result, _duration_from(request))
         return Response(result)
     except Exception as e:

@@ -18,7 +18,7 @@ function withExamNote(text, note) {
 
 // The task prompt is generated per student level, then sent back with the
 // answer so the rater scores against the prompt the student actually saw.
-function useTask(kind, level, essayType) {
+function useTask(kind, level, essayType, oralType) {
   const [task, setTask]       = useState(null)
   const [loading, setLoading] = useState(true)
   // A teacher-supplied prompt wins over the generated one. The backend already
@@ -28,7 +28,7 @@ function useTask(kind, level, essayType) {
   const newTask = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await axios.post(`${API}/grade/prompt/`, { kind, level, essay_type: essayType })
+      const res = await axios.post(`${API}/grade/prompt/`, { kind, level, essay_type: essayType, oral_type: oralType })
       const data = res.data
       setTask(kind === 'essay'
         ? { spanish: withExamNote(data.spanish, EXAM_NOTE_ES), english: withExamNote(data.english, EXAM_NOTE_EN) }
@@ -38,7 +38,7 @@ function useTask(kind, level, essayType) {
     } finally {
       setLoading(false)
     }
-  }, [kind, level, essayType])
+  }, [kind, level, essayType, oralType])
 
    
   useEffect(() => { newTask() }, [newTask])
@@ -52,12 +52,12 @@ function useTask(kind, level, essayType) {
   }
 }
 
+// Only these three are scored — Fluency/Coherency aren't part of the BTLPT
+// oral rubric (fluency is folded into Language Use).
 const DIMENSION_LABELS = {
   task_completion:   'Task Completion',
   topic_development: 'Topic Development',
   language_use:      'Language Use',
-  fluency:           'Fluency',
-  coherency:         'Coherency',
 }
 
 function ScoreRow({ label, score, confidence, confLabel }) {
@@ -85,8 +85,8 @@ function ScoreRow({ label, score, confidence, confLabel }) {
 // the whole feedback with no newlines ("Task Completion:- ...Topic Development:- ..."),
 // so headings and bullets are broken onto their own lines before parsing.
 const FEEDBACK_HEADINGS = [
-  'Task Completion', 'Topic Development', 'Language Use', 'Fluency', 'Coherency',
-  'Cumplimiento de la tarea', 'Desarrollo del tema', 'Uso del lenguaje', 'Fluidez', 'Coherencia',
+  'Task Completion', 'Topic Development', 'Language Use',
+  'Cumplimiento de la tarea', 'Desarrollo del tema', 'Uso del lenguaje',
 ]
 
 const normalizeFeedback = text => text
@@ -130,22 +130,19 @@ function Feedback({ text }) {
   )
 }
 
-function Results({ result, t, uiLang }) {
-  const [lang, setLang] = useState(uiLang === 'es' ? 'es' : 'en')
-  const scores = result.scores
+// One dimension group's scores + feedback. `heading` labels it (e.g. "Question 1")
+// when several of these appear in one Results block (the 'qa' two-question task);
+// omitted for the single-question tasks that only ever show one block.
+function ScoreBlock({ heading, scores, confidenceScores, feedback, feedbackSpanish, lang, t }) {
   const max = Object.keys(scores).length * 3
   const total = Object.values(scores).reduce((a, b) => a + b, 0)
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #e0e0e0', padding: '20px', marginTop: '16px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '16px' }}>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '12px' }}>
         <strong style={{ fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', color: MAROON }}>
-          {t.score} {total}/{max}
+          {heading && `${heading} — `}{t.score} {total}/{max}
         </strong>
-        <span style={{ fontSize: '14px', color: '#888' }}>
-          {result.word_count != null && `${result.word_count} ${t.words} · `}
-          {t.overallConfidence} {Math.round(result.overall_confidence * 100)}%
-        </span>
       </div>
 
       {Object.entries(scores).map(([key, value]) => (
@@ -153,12 +150,33 @@ function Results({ result, t, uiLang }) {
           key={key}
           label={DIMENSION_LABELS[key] || key}
           score={value}
-          confidence={result.confidence_scores?.[key]}
+          confidence={confidenceScores?.[key]}
           confLabel={t.conf}
         />
       ))}
 
-      <div style={{ marginTop: '18px', display: 'flex', gap: '8px' }}>
+      <Feedback text={lang === 'es' ? feedbackSpanish : feedback} />
+    </div>
+  )
+}
+
+function Results({ result, t, uiLang }) {
+  const [lang, setLang] = useState(uiLang === 'es' ? 'es' : 'en')
+  // The 'qa' oral task grades Question 1 and Question 2 separately so students
+  // can see which one they lost points on — result.questions has two entries
+  // instead of the usual single top-level result.scores.
+  const questions = result.questions
+
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e0e0e0', padding: '20px', marginTop: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'baseline', marginBottom: '12px' }}>
+        <span style={{ fontSize: '14px', color: '#888' }}>
+          {result.word_count != null && `${result.word_count} ${t.words} · `}
+          {t.overallConfidence} {Math.round(result.overall_confidence * 100)}%
+        </span>
+      </div>
+
+      <div style={{ marginBottom: '16px', display: 'flex', gap: '8px' }}>
         {['en', 'es'].map(l => (
           <button
             key={l}
@@ -176,7 +194,30 @@ function Results({ result, t, uiLang }) {
         ))}
       </div>
 
-      <Feedback text={lang === 'es' ? result.feedback_spanish : result.feedback} />
+      {questions ? (
+        questions.map((q, i) => (
+          <div key={i} style={i > 0 ? { marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #f0e8e8' } : undefined}>
+            <ScoreBlock
+              heading={i === 0 ? t.question1 : t.question2}
+              scores={q.scores}
+              confidenceScores={q.confidence_scores}
+              feedback={q.feedback}
+              feedbackSpanish={q.feedback_spanish}
+              lang={lang}
+              t={t}
+            />
+          </div>
+        ))
+      ) : (
+        <ScoreBlock
+          scores={result.scores}
+          confidenceScores={result.confidence_scores}
+          feedback={result.feedback}
+          feedbackSpanish={result.feedback_spanish}
+          lang={lang}
+          t={t}
+        />
+      )}
 
       {result.transcription && (
         <details style={{ marginTop: '8px', fontSize: '15px', color: '#555' }}>
@@ -303,6 +344,13 @@ function formatTime(totalSeconds) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
+// Max possible score for a result — the 'qa' oral task scores two questions
+// separately (result.questions) instead of one flat result.scores.
+function maxScoreOf(result) {
+  if (result.questions) return result.questions.reduce((sum, q) => sum + Object.keys(q.scores).length * 3, 0)
+  return Object.keys(result.scores).length * 3
+}
+
 function EssayTab({ sessionId, level, onGraded, lang, essayType }) {
   const t = strings(lang)
   const { task, loading: taskLoading, newTask, custom, setCustom } = useTask('essay', level, essayType)
@@ -423,9 +471,50 @@ function EssayTab({ sessionId, level, onGraded, lang, essayType }) {
   )
 }
 
-function AudioTab({ sessionId, level, onGraded, lang }) {
+// Per-BTLPT-task guidance shown under the prompt, keyed by oralType.
+const ORAL_TYPE_NOTE_KEY = {
+  conversation: 'noteOralConversation',
+  qa:           'noteOralQA',
+  presentation: 'noteOralPresentation',
+  situation:    'noteOralSituation',
+}
+
+// The 'qa' oral task packs Question 1 and Question 2 into one generated prompt
+// (same scenario, related questions) so the student answers both in a single
+// recording. This splits on whichever question-2 marker Gemini wrote (Spanish
+// or English label) so the two questions can be revealed one at a time; null
+// if the text doesn't have a recognizable two-question shape (e.g. a custom
+// teacher-written prompt), in which case the caller shows the whole thing.
+function splitQA(text) {
+  if (!text) return null
+  const idx1 = text.search(/pregunta 1|question 1/i)
+  const idx2 = text.search(/pregunta 2|question 2/i)
+  if (idx1 === -1 || idx2 === -1 || idx2 <= idx1) return null
+  return {
+    stage1: text.slice(0, idx2).trim(),
+    stage2: text.slice(0, idx1).trim() + '\n\n' + text.slice(idx2).trim(),
+  }
+}
+
+function AudioTab({ sessionId, level, onGraded, lang, oralType }) {
   const t = strings(lang)
-  const { task, loading: taskLoading, newTask, custom, setCustom } = useTask('audio', level)
+  const { task, loading: taskLoading, newTask, custom, setCustom } = useTask('audio', level, undefined, oralType)
+  const note = oralType ? t[ORAL_TYPE_NOTE_KEY[oralType]] : t.noteAudio
+
+  // Which question is currently shown for the 'qa' task; resets whenever a
+  // new (or custom) task loads. Recording is NOT restarted on advance — the
+  // student keeps talking through both questions and is graded once at the end.
+  const [qaStage, setQaStage] = useState(1)
+  useEffect(() => { setQaStage(1) }, [task])
+  const qaSpanish = oralType === 'qa' ? splitQA(task?.spanish) : null
+  const qaEnglish = oralType === 'qa' ? splitQA(task?.english) : null
+  const displayTask = qaSpanish
+    ? {
+        spanish: qaStage === 1 ? qaSpanish.stage1 : qaSpanish.stage2,
+        english: qaEnglish ? (qaStage === 1 ? qaEnglish.stage1 : qaEnglish.stage2) : task.english,
+      }
+    : task
+
   const [recording, setRecording] = useState(false)
   const [blob, setBlob]           = useState(null)
   const [seconds, setSeconds]     = useState(0)
@@ -473,6 +562,7 @@ function AudioTab({ sessionId, level, onGraded, lang }) {
     form.append('session_id', sessionId)
     form.append('task_spanish', task?.spanish || '')
     form.append('task_english', task?.english || '')
+    if (oralType) form.append('oral_type', oralType)
     try {
       const res = await axios.post(`${API}/grade/audio/`, form)
       setResult(res.data)
@@ -486,7 +576,13 @@ function AudioTab({ sessionId, level, onGraded, lang }) {
 
   return (
     <>
-      <TaskPrompt task={task} note={t.noteAudio} loading={taskLoading} onNew={newTask} t={t} custom={custom} setCustom={setCustom} />
+      <TaskPrompt task={displayTask} note={note} loading={taskLoading} onNew={newTask} t={t} custom={custom} setCustom={setCustom} />
+
+      {oralType === 'qa' && qaSpanish && qaStage === 1 && (
+        <div style={{ marginTop: '10px' }}>
+          <button onClick={() => setQaStage(2)} style={outlineBtn}>{t.nextQuestion}</button>
+        </div>
+      )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '16px', flexWrap: 'wrap' }}>
         <button
@@ -526,7 +622,7 @@ function AudioTab({ sessionId, level, onGraded, lang }) {
   )
 }
 
-function GradingScreen({ kind, sessionId, level, lang, essayType = 'opinion' }) {
+function GradingScreen({ kind, sessionId, level, lang, essayType = 'opinion', oralType }) {
   const t = strings(lang)
   const [history, setHistory] = useState([])
 
@@ -547,7 +643,7 @@ function GradingScreen({ kind, sessionId, level, lang, essayType = 'opinion' }) 
 
       {kind === 'essay'
         ? <EssayTab sessionId={sessionId} level={level} onGraded={loadHistory} lang={lang} essayType={essayType} />
-        : <AudioTab sessionId={sessionId} level={level} onGraded={loadHistory} lang={lang} />}
+        : <AudioTab sessionId={sessionId} level={level} onGraded={loadHistory} lang={lang} oralType={oralType} />}
 
       {history.length > 0 && (
         <div style={{ marginTop: '28px' }}>
@@ -557,7 +653,7 @@ function GradingScreen({ kind, sessionId, level, lang, essayType = 'opinion' }) 
           {history.map(s => (
             <details key={s.id} style={{ background: '#fff', border: '1px solid #e0e0e0', padding: '10px 12px', marginBottom: '8px', fontSize: '15px' }}>
               <summary style={{ cursor: 'pointer' }}>
-                {s.total_score}/{Object.keys(s.result.scores).length * 3}
+                {s.total_score}/{maxScoreOf(s.result)}
                 <span style={{ color: '#999' }}> · {new Date(s.created_at).toLocaleDateString()}</span>
                 {s.duration_seconds != null && (
                   <span style={{ color: '#999' }}> · {t.timeSpent} {formatTime(s.duration_seconds)}</span>

@@ -36,21 +36,46 @@ class EssayGradingResponse(BaseModel):
 
 
 class AudioGradingResponse(BaseModel):
-    """Flat schema for audio grading — used as Gemini response_schema."""
+    """Flat schema for audio grading — used as Gemini response_schema.
+    Only the three BTLPT rubric dimensions (see rubrics.py) are scored —
+    Fluency and Coherency aren't part of the official BTLPT oral rubric."""
     transcription: str
     transcription_english: str
     score_task_completion: int
     score_topic_development: int
     score_language_use: int
-    score_fluency: int
-    score_coherency: int
     feedback: str
     feedback_spanish: str
     confidence_task_completion: float
     confidence_topic_development: float
     confidence_language_use: float
-    confidence_fluency: float
-    confidence_coherency: float
+    overall_confidence: float
+    reasoning: str
+
+
+class AudioQAGradingResponse(BaseModel):
+    """Flat schema for the two-question 'Question & Answer' oral task — the
+    student answers both questions in one continuous recording, but each
+    question is scored and given feedback independently so students can see
+    exactly which question they lost points on."""
+    transcription: str
+    transcription_english: str
+    score_task_completion_q1: int
+    score_topic_development_q1: int
+    score_language_use_q1: int
+    feedback_q1: str
+    feedback_spanish_q1: str
+    confidence_task_completion_q1: float
+    confidence_topic_development_q1: float
+    confidence_language_use_q1: float
+    score_task_completion_q2: int
+    score_topic_development_q2: int
+    score_language_use_q2: int
+    feedback_q2: str
+    feedback_spanish_q2: str
+    confidence_task_completion_q2: float
+    confidence_topic_development_q2: float
+    confidence_language_use_q2: float
     overall_confidence: float
     reasoning: str
 
@@ -64,6 +89,14 @@ TASK PROMPT GIVEN TO PARTICIPANTS:
 {spanish}
 ({english})
 Response time: minimum 50 seconds, maximum 120 seconds.
+"""
+
+QA_TASK_TEMPLATE = """
+TASK PROMPT GIVEN TO PARTICIPANTS (one scenario, two related questions — the
+student answered BOTH in one continuous, uninterrupted recording):
+{spanish}
+({english})
+Each question's response time: minimum 45 seconds, maximum 90 seconds.
 """
 
 ESSAY_TASK_TEMPLATE = """
@@ -81,6 +114,63 @@ NOTE ON THE REFERENCE EXAMPLES BELOW: they were written for a different task
 prompt. Use them ONLY to calibrate how severe each score level is. Judge
 relevance against the TASK PROMPT above, never against the example's topic.
 """
+
+# Shared scoring criteria for BTLPT oral tasks — used by both the single-question
+# grading prompt and the two-question 'qa' grading prompt. Only these three
+# dimensions are graded; the official BTLPT rubric (see rubrics.py) has no
+# separate Fluency or Coherency dimension — fluency is folded into Language Use.
+ORAL_DIMENSION_CRITERIA = """── TASK COMPLETION ──
+Score 3: ALL of the following must be true:
+  ✔ Clearly and fully addresses the task prompt, covering what it actually asks
+  ✔ Response feels complete and well-organized — not just a string of disconnected statements
+  ✔ Sustained real speech content of at least 60–90 seconds (pauses/silence don't count)
+  ✔ No major gaps — the listener does not feel something important was left unsaid
+  ✗ NOT a 3 if: speaker only touched ONE aspect with shallow treatment
+  ✗ NOT a 3 if: there are long silences, trailing-off sentences, or speaker runs out of things to say mid-response
+  ✗ NOT a 3 if: response is under 60 seconds of real speech regardless of quality
+Score 2: Addresses the prompt AND meets ALL of:
+  • Real speech content of at least 50 seconds (pauses excluded)
+  • Includes at least 2 developed statements about the topic (not just naming things)
+  • Stays on topic without major derailment
+  (If the response is under 45 seconds of real content, it cannot be Score 2 — it is Score 1 at most)
+Score 1: ANY of these make it a Score 1:
+  • Under ~45 seconds of real speech / only 1–4 sentences with nothing substantive added
+  • Names places but gives only generic, empty statements ("fue divertido", "vi muchas cosas") with nothing more
+  • Barely addresses the task prompt even if on-topic
+  • Spends most of the time in English or code-switching rather than Spanish
+Score 0: Blank, silent, completely off-topic, or incomprehensible
+
+── TOPIC DEVELOPMENT ──
+Score 3: ALL of the following must be true:
+  ✔ Provides SPECIFIC, well-developed details (e.g., named places WITH descriptions, activities WITH explanations, feelings WITH reasons, comparisons)
+  ✔ Ideas connect logically and build on each other — not just a list
+  ✔ The listener comes away with a vivid picture of what was described
+  ✗ NOT a 3 if: ideas are a sequence of short statements without elaboration
+  ✗ NOT a 3 if: the response repeats the same idea in slightly different words
+  ✗ NOT a 3 if: details are mostly generic (e.g., "fue divertido", "me gustó mucho") without specifics
+Score 2: Provides at least 2 concrete, specific details that go beyond just naming things; ideas are relevant but somewhat thin or vague in places; the listener understands the experience even if it lacks richness
+Score 1: ANY of these:
+  • Content is limited to naming places/activities with generic positive statements and nothing more
+  • Response is too brief to develop any topic meaningfully (under ~45 seconds real speech)
+  • Content consists mostly of filler phrases and generalities ("fue una experiencia nueva", "vi muchas cosas")
+Score 0: No relevant content
+
+── LANGUAGE USE ──
+Score 3: ALL of the following must be true:
+  ✔ Very few errors in grammar, verb conjugation, gender/number agreement, or vocabulary (≤3 total)
+  ✔ No systematic pattern of errors
+  ✔ Varied, precise vocabulary appropriate for the topic
+  ✔ High fluency — smooth delivery, minimal hesitation, no long pauses
+  ✔ Clear pronunciation throughout
+  ✗ NOT a 3 if: there are 4+ grammatical errors (wrong tense, agreement, missing articles, etc.)
+  ✗ NOT a 3 if: fluency is interrupted by multiple "uhm"/"este"/false starts across the recording
+Score 2: Some errors in grammar, vocabulary, or pronunciation but communication is NOT impeded; moderate fluency; occasional hesitation or self-correction; vocabulary is adequate but not highly varied; roughly 4–7 errors total
+Score 1: ANY of these:
+  • 8+ grammatical errors across verb forms, agreement, vocabulary, or pronunciation
+  • Very limited vocabulary (basic words repeated, heavy English borrowing / code-switching)
+  • Low fluency — frequent long pauses, false starts, or labored expression throughout
+  • Pronunciation significantly affects comprehension
+Score 0: Errors so severe communication is impossible"""
 
 # Fallback tasks — used when prompt generation is unavailable.
 DEFAULT_ESSAY_TASK = {
@@ -225,6 +315,64 @@ ESSAY_TYPE_SHAPES = {
         "Quote the message in full, then instruct the student to write a reply in Spanish with "
         "an appropriate greeting, answers to every point raised, and a closing."
     ),
+}
+
+
+# BTLPT Oral Expression task types (Domain II). Unlike the essay types, these
+# all share the generic oral rubric in _build_audio_prompt — only the prompt
+# SHAPE (what generate_task asks Gemini to produce) differs per type.
+ORAL_TYPE_SHAPES = {
+    "conversation": (
+        "a simulated 4-turn conversation script. Start with ONE short scenario-setup sentence "
+        "in Spanish naming who the student is talking to (e.g. a school principal, a parent, a "
+        "colleague, an interviewer) and the situation. Then write exactly 4 numbered lines — "
+        "'Turno 1' through 'Turno 4' — each ONE conversational question or remark spoken BY THE "
+        "OTHER PERSON (never the student), building naturally on the situation, with Turno 4 "
+        "including a closing farewell. Format the Spanish field EXACTLY as:\n"
+        "Escenario: <setup>\n\nTurno 1: <line>\nTurno 2: <line>\nTurno 3: <line>\nTurno 4: <line>\n"
+        "Do not write the student's responses — only the setup and the other person's 4 lines."
+    ),
+    "qa": (
+        "a short scenario (2-3 sentences) about a school or work situation the student is "
+        "involved in, followed by exactly two RELATED questions a colleague or supervisor asks "
+        "about it: Question 1 is a direct opening question about the scenario, and Question 2 is "
+        "a deeper follow-up that builds on Question 1 by asking the student to justify a choice, "
+        "explain an implication, or address a complication. Each question needs a detailed "
+        "60-second spoken answer. Format the Spanish field EXACTLY as:\nEscenario: <setup>\n\n"
+        "Pregunta 1: <opening question>\n\nPregunta 2: <follow-up question>"
+    ),
+    "presentation": (
+        "a topic for a 2-minute oral presentation to an audience of students, teachers, or "
+        "parents, with 2-4 bullet points of supporting information the student should "
+        "incorporate. Format the Spanish field EXACTLY as:\nTema: <topic>\n\n"
+        "Información de apoyo:\n- <point>\n- <point>\n- <point>"
+    ),
+    "situation": (
+        "a school or work-related dilemma or disagreement between two or more people, ending "
+        "with a sentence asking the student to state their opinion or proposed solution and "
+        "support it with at least two valid, convincing reasons in a 2-minute response. Format "
+        "the Spanish field EXACTLY as:\nSituación: <description>\n\n<closing instruction sentence>"
+    ),
+}
+
+# Fallback tasks per oral type — used when Gemini generation is unavailable.
+ORAL_TYPE_DEFAULTS = {
+    "conversation": {
+        "spanish": "Escenario: Estás en una feria de trabajo para un distrito escolar en Texas y hablas con la directora de una escuela.\n\nTurno 1: Buenos días, ¿cómo se enteró de nuestra escuela?\nTurno 2: ¿Qué experiencia tiene enseñando español?\nTurno 3: ¿Por qué le interesa trabajar en nuestro distrito?\nTurno 4: Ha sido un placer hablar con usted. ¿Alguna pregunta antes de despedirnos?",
+        "english": "Scenario: You are at a job fair for a Texas school district talking with a school principal.\n\nTurn 1: Good morning, how did you hear about our school?\nTurn 2: What experience do you have teaching Spanish?\nTurn 3: Why are you interested in working in our district?\nTurn 4: It's been a pleasure speaking with you. Any questions before we say goodbye?",
+    },
+    "qa": {
+        "spanish": "Escenario: Propusiste organizar un festival cultural hispano en tu escuela durante una reunión de maestros.\n\nPregunta 1: ¿Qué actividades incluiría usted en el festival y por qué?\n\nPregunta 2: ¿Cómo se aseguraría de que todos los estudiantes puedan participar, incluyendo aquellos con necesidades especiales?",
+        "english": "Scenario: You proposed organizing a Hispanic cultural festival at your school during a teacher meeting.\n\nQuestion 1: What activities would you include in the festival, and why?\n\nQuestion 2: How would you make sure all students can participate, including those with special needs?",
+    },
+    "presentation": {
+        "spanish": "Tema: Presente a su clase la importancia de la Independencia de México.\n\nInformación de apoyo:\n- El movimiento comenzó en 1810 con el Grito de Dolores.\n- México obtuvo su independencia de España en 1821.\n- La fecha se celebra cada 16 de septiembre con desfiles y festividades.",
+        "english": "Topic: Present to your class the importance of Mexican Independence.\n\nSupporting information:\n- The movement began in 1810 with the Grito de Dolores.\n- Mexico gained independence from Spain in 1821.\n- The date is celebrated every September 16th with parades and festivities.",
+    },
+    "situation": {
+        "spanish": "Situación: Dos maestros de su escuela no están de acuerdo sobre si se debe permitir el uso de celulares durante la clase. Uno cree que ayuda con la investigación; el otro cree que distrae a los estudiantes.\n\nSi le pidieran su opinión, ¿qué recomendaría? Justifique su respuesta con al menos dos razones válidas y convincentes.",
+        "english": "Situation: Two teachers at your school disagree about whether cell phones should be allowed during class. One believes it helps with research; the other believes it distracts students.\n\nIf asked for your opinion, what would you recommend? Justify your answer with at least two valid and convincing reasons.",
+    },
 }
 
 
@@ -520,101 +668,7 @@ GRADING PHILOSOPHY:
 
 HOW TO SCORE EACH DIMENSION — apply these PRECISELY:
 
-── TASK COMPLETION ──
-Score 3: ALL of the following must be true:
-  ✔ Clearly and fully addresses the task prompt, covering what it actually asks
-  ✔ Response feels complete and well-organized — not just a string of disconnected statements
-  ✔ Sustained real speech content of at least 60–90 seconds (pauses/silence don't count)
-  ✔ No major gaps — the listener does not feel something important was left unsaid
-  ✗ NOT a 3 if: speaker only touched ONE aspect with shallow treatment
-  ✗ NOT a 3 if: there are long silences, trailing-off sentences, or speaker runs out of things to say mid-response
-  ✗ NOT a 3 if: response is under 60 seconds of real speech regardless of quality
-Score 2: Addresses the prompt AND meets ALL of:
-  • Real speech content of at least 50 seconds (pauses excluded)
-  • Includes at least 2 developed statements about the topic (not just naming things)
-  • Stays on topic without major derailment
-  (If the response is under 45 seconds of real content, it cannot be Score 2 — it is Score 1 at most)
-Score 1: ANY of these make it a Score 1:
-  • Under ~45 seconds of real speech / only 1–4 sentences with nothing substantive added
-  • Names places but gives only generic, empty statements ("fue divertido", "vi muchas cosas") with nothing more
-  • Barely addresses the task prompt even if on-topic
-  • Spends most of the time in English or code-switching rather than Spanish
-Score 0: Blank, silent, completely off-topic, or incomprehensible
-
-── TOPIC DEVELOPMENT ──
-Score 3: ALL of the following must be true:
-  ✔ Provides SPECIFIC, well-developed details (e.g., named places WITH descriptions, activities WITH explanations, feelings WITH reasons, comparisons)
-  ✔ Ideas connect logically and build on each other — not just a list
-  ✔ The listener comes away with a vivid picture of what was described
-  ✗ NOT a 3 if: ideas are a sequence of short statements without elaboration
-  ✗ NOT a 3 if: the response repeats the same idea in slightly different words
-  ✗ NOT a 3 if: details are mostly generic (e.g., "fue divertido", "me gustó mucho") without specifics
-Score 2: Provides at least 2 concrete, specific details that go beyond just naming things; ideas are relevant but somewhat thin or vague in places; the listener understands the experience even if it lacks richness
-Score 1: ANY of these:
-  • Content is limited to naming places/activities with generic positive statements and nothing more
-  • Response is too brief to develop any topic meaningfully (under ~45 seconds real speech)
-  • Content consists mostly of filler phrases and generalities ("fue una experiencia nueva", "vi muchas cosas")
-Score 0: No relevant content
-
-── LANGUAGE USE ──
-Score 3: ALL of the following must be true:
-  ✔ Very few errors in grammar, verb conjugation, gender/number agreement, or vocabulary (≤3 total)
-  ✔ No systematic pattern of errors
-  ✔ Varied, precise vocabulary appropriate for the topic
-  ✔ High fluency — smooth delivery, minimal hesitation, no long pauses
-  ✔ Clear pronunciation throughout
-  ✗ NOT a 3 if: there are 4+ grammatical errors (wrong tense, agreement, missing articles, etc.)
-  ✗ NOT a 3 if: fluency is interrupted by multiple "uhm"/"este"/false starts across the recording
-Score 2: Some errors in grammar, vocabulary, or pronunciation but communication is NOT impeded; moderate fluency; occasional hesitation or self-correction; vocabulary is adequate but not highly varied; roughly 4–7 errors total
-Score 1: ANY of these:
-  • 8+ grammatical errors across verb forms, agreement, vocabulary, or pronunciation
-  • Very limited vocabulary (basic words repeated, heavy English borrowing / code-switching)
-  • Low fluency — frequent long pauses, false starts, or labored expression throughout
-  • Pronunciation significantly affects comprehension
-Score 0: Errors so severe communication is impossible
-
-── FLUENCY (oral delivery only) ──
-Score fluency as a SEPARATE dimension from Language Use. Focus exclusively on delivery — pace, hesitation, and speech flow. Use the transcription as your evidence source.
-
-BEFORE scoring, count these disfluency markers in the transcription:
-  • Each "..." = a pause, silence gap, or audible hesitation
-  • Each filler word: "um," "uh," "este," "eh," "como se llama," "o sea" (when used as filler)
-  • Each false start: a phrase begun and abandoned before completion (e.g., "yo fui... yo, este... fui a...")
-  • Each self-correction: saying one word then immediately replacing it (e.g., "comí... bebí... comí arroz")
-  • Each English word inserted mid-Spanish sentence (code-switching mid-utterance)
-Sum these to get the total disfluency count. Then assign:
-
-Score 3: Smooth, natural delivery throughout.
-  ✔ 0–2 total disfluency markers across the entire recording
-  ✔ No false starts, no self-corrections
-  ✔ No mid-sentence code-switching into English
-  ✔ Pace is natural and consistent — no rushing or labored slowness
-  ✗ NOT a 3 if: 3 or more total disfluency markers appear in the transcription
-  ✗ NOT a 3 if: any false start or mid-utterance self-correction occurs
-  ✗ NOT a 3 if: English words are inserted mid-Spanish sentence
-
-Score 2: Mostly fluent but some disfluency is noticeable:
-  • 3–6 total disfluency markers across the recording
-  • At most 1–2 false starts OR 1–2 self-corrections
-  • Occasional single English word inserted, but Spanish is otherwise maintained
-  • Pace is mostly consistent; minor rushes or pauses do not derail the response
-  • Listener follows without significant difficulty
-
-Score 1: Frequent disfluency that disrupts flow:
-  • 7 or more total disfluency markers across the recording, OR
-  • Multiple false starts spread throughout, OR
-  • Regular code-switching (full English phrases inserted into the response), OR
-  • Long silences (3+ consecutive "..." in the transcription) that stall the response
-  • Delivery feels labored or halting — the listener must work to follow
-
-Score 0: Delivery is so hesitant or labored that it severely impedes understanding.
-
-── COHERENCY (logical organization of ideas) ──
-Score coherency as a SEPARATE dimension from Topic Development. Focus exclusively on how logically the ideas connect and flow — regardless of content richness.
-Score 3: Ideas are clearly organized and logically sequenced. Transitions between ideas are smooth and intentional. The listener can easily follow the thread of the response. No abrupt topic jumps.
-Score 2: Overall logic is followable, but some transitions are abrupt or ideas shift without clear connection. The response has a loose structure but is not disjointed.
-Score 1: Response feels disorganized. Ideas appear in random order or jump between points without connectors. The listener must work to follow the argument.
-Score 0: No discernible logical structure. Ideas are completely scattered or incoherent.
+{ORAL_DIMENSION_CRITERIA}
 
 SCORE CALIBRATION — use these reference points when deciding:
 {ANCHOR_DISCLAIMER}
@@ -637,7 +691,7 @@ CRITICAL REMINDERS:
 YOUR TASK:
 1. Transcribe the Spanish audio completely and accurately (include pauses as "..." and English words as-is).
 2. Carefully count errors in the transcription before assigning Language Use score.
-3. Evaluate on FIVE dimensions: Task Completion, Topic Development, Language Use, Fluency, Coherency.
+3. Evaluate on THREE dimensions: Task Completion, Topic Development, Language Use.
 4. Assign scores (0-3) per dimension based on the rubric above — be strict and apply the "NOT a 3" disqualifiers.
 5. Provide concise feedback in English (under 250 words) with SPECIFIC examples from the transcription,
    in the `feedback` field, written EXACTLY in this shape and nothing else:
@@ -650,21 +704,97 @@ YOUR TASK:
    Language Use:
    - <...>
    - <the rater's reason for this score>
-   Fluency:
-   - <...>
-   - <the rater's reason for this score>
-   Coherency:
-   - <...>
-   - <the rater's reason for this score>
-   Rules: those five headings verbatim, each on its own line ending in a colon; every other line a bullet
+   Rules: those three headings verbatim, each on its own line ending in a colon; every other line a bullet
    starting with "- "; two to four bullets per section; the LAST bullet of each section is always the
    rater's reason for that dimension's score; no score numbers, no field names, no extra headings.
 6. Translate that same feedback into Spanish in `feedback_spanish` — same structure, same bullet count,
-   headings translated (Cumplimiento de la tarea: / Desarrollo del tema: / Uso del lenguaje: /
-   Fluidez: / Coherencia:).
+   headings translated (Cumplimiento de la tarea: / Desarrollo del tema: / Uso del lenguaje:).
 7. Assess confidence (0.0-1.0) for each score based on audio quality.
 8. Briefly explain your overall reasoning (under 100 words).
 9. Provide an English translation of the full transcription in the `transcription_english` field.
+
+Respond using the exact fields requested.
+"""
+
+    def _build_qa_audio_prompt(self, task: dict) -> str:
+        """Build the grading prompt for the two-question 'qa' oral task — the
+        student answers both questions in one recording, but each is scored
+        and given feedback independently."""
+        rubric = SC_RUBRIC
+        criteria_text = ""
+        for criterion in rubric.criteria:
+            criteria_text += f"\nScore {criterion.score} ({criterion.level_name}):\n"
+            criteria_text += f"  Task Completion: {'; '.join(criterion.task_completion)}\n"
+            criteria_text += f"  Topic Development: {'; '.join(criterion.topic_development)}\n"
+            criteria_text += f"  Language Use: {'; '.join(criterion.language_use)}\n"
+
+        return f"""You are a strict, accurate Spanish language evaluator grading oral recordings for a BTLPT language proficiency assessment.
+
+{QA_TASK_TEMPLATE.format(**task)}
+
+The audio contains the student's spoken answers to BOTH Question 1 and Question 2 from
+the task prompt above, recorded back-to-back in ONE continuous, uninterrupted take —
+there is no pause or marker in the audio separating them. First determine, from the
+transcription's content, where the answer to Question 1 ends and the answer to Question 2
+begins (the content will shift to address what Question 2 asks, and the student may
+explicitly reference which question they're answering). Then score EACH question's answer
+SEPARATELY and independently using the dimensions below — a weak or strong answer to one
+question must NOT influence the other question's score.
+
+RUBRIC: {rubric.name} — {rubric.description}
+
+SCORING CRITERIA (0-3 scale):
+{criteria_text}
+
+GRADING PHILOSOPHY:
+- Grade strictly and accurately — follow the rubric closely. Do NOT inflate or be charitable.
+- A score of 0 is for an answer that is nearly silent, completely off-topic, or utterly incomprehensible.
+- A score of 3 requires genuinely strong performance — not just "good enough." Most test-takers score 1 or 2, not 3.
+- Hesitation, silence gaps, repetition, very short responses, and thin content should all lower your score.
+- When in doubt between two scores, choose the LOWER one.
+- Judge each question's answer against what THAT question asks — do not penalize the
+  Question 1 answer for not covering what Question 2 asks, or vice versa.
+
+HOW TO SCORE EACH DIMENSION — apply these PRECISELY to EACH question's answer:
+
+{ORAL_DIMENSION_CRITERIA}
+
+CRITICAL REMINDERS:
+- HOLISTIC LANGUAGE CAP applies per question: if a question's answer has Language Use = 1
+  (pervasive grammatical errors, limited vocabulary, and/or impeded fluency), that question's
+  Task Completion and Topic Development CANNOT be 3 — cap them at 2 maximum.
+- If the student never clearly answers Question 2 at all (e.g. the recording cuts off after
+  Question 1, or they only discuss Question 1's topic throughout), score Question 2 as a 0
+  across all three dimensions rather than guessing — do not inflate to be charitable.
+
+YOUR TASK:
+1. Transcribe the Spanish audio completely and accurately (include pauses as "..." and English words as-is).
+2. Identify the boundary between the Question 1 answer and the Question 2 answer.
+3. Carefully count errors in each half of the transcription before assigning its Language Use score.
+4. Evaluate EACH question's answer on THREE dimensions: Task Completion, Topic Development, Language Use.
+5. Assign scores (0-3) per dimension per question — be strict and apply the "NOT a 3" disqualifiers.
+6. For EACH question, provide concise feedback in English (under 200 words) with SPECIFIC examples
+   from that question's portion of the transcription, in `feedback_q1` / `feedback_q2`, written
+   EXACTLY in this shape and nothing else:
+   Task Completion:
+   - <what the response did or failed to do, quoting the transcription>
+   - <the rater's reason for this score: the decisive evidence or cap that set it>
+   Topic Development:
+   - <...>
+   - <the rater's reason for this score>
+   Language Use:
+   - <...>
+   - <the rater's reason for this score>
+   Rules: those three headings verbatim, each on its own line ending in a colon; every other line a
+   bullet starting with "- "; two to four bullets per section; the LAST bullet of each section is
+   always the rater's reason for that dimension's score; no score numbers, no field names, no extra headings.
+7. Translate each feedback into Spanish in `feedback_spanish_q1` / `feedback_spanish_q2` — same
+   structure, same bullet count, headings translated (Cumplimiento de la tarea: / Desarrollo del
+   tema: / Uso del lenguaje:).
+8. Assess confidence (0.0-1.0) for each of the six scores based on audio quality and how clearly
+   the two answers could be told apart.
+9. Briefly explain your overall reasoning, including where you drew the Q1/Q2 boundary (under 100 words).
+10. Provide an English translation of the full transcription in the `transcription_english` field.
 
 Respond using the exact fields requested.
 """
@@ -687,14 +817,19 @@ Respond using the exact fields requested.
             ),
         )
 
-    def generate_task(self, kind: str, level: str = "B1", essay_type: str = "opinion") -> dict:
+    def generate_task(self, kind: str, level: str = "B1", essay_type: str = "opinion", oral_type: str = None) -> dict:
         """Generate a fresh, level-appropriate task prompt. Returns {spanish, english}."""
         if not self.client:
-            return DEFAULT_ESSAY_TASK if kind == "essay" else DEFAULT_ORAL_TASK
+            if kind == "essay":
+                return DEFAULT_ESSAY_TASK
+            return ORAL_TYPE_DEFAULTS.get(oral_type, DEFAULT_ORAL_TASK)
 
         if kind == "essay":
             shape = ESSAY_TYPE_SHAPES.get(essay_type, ESSAY_TYPE_SHAPES["opinion"])
             example = DEFAULT_ESSAY_TASK["spanish"]
+        elif oral_type in ORAL_TYPE_SHAPES:
+            shape = ORAL_TYPE_SHAPES[oral_type]
+            example = ORAL_TYPE_DEFAULTS[oral_type]["spanish"]
         else:
             shape = (
                 "a speaking prompt asking the student to describe a personal experience or a "
@@ -769,8 +904,6 @@ Return the prompt in Spanish, plus a faithful English translation."""
                 "task_completion": g.score_task_completion,
                 "topic_development": g.score_topic_development,
                 "language_use": g.score_language_use,
-                "fluency": g.score_fluency,
-                "coherency": g.score_coherency,
             }),
             "feedback": g.feedback,
             "feedback_spanish": g.feedback_spanish,
@@ -778,9 +911,54 @@ Return the prompt in Spanish, plus a faithful English translation."""
                 "task_completion": clamp_confidence(g.confidence_task_completion),
                 "topic_development": clamp_confidence(g.confidence_topic_development),
                 "language_use": clamp_confidence(g.confidence_language_use),
-                "fluency": clamp_confidence(g.confidence_fluency),
-                "coherency": clamp_confidence(g.confidence_coherency),
             },
+            "overall_confidence": clamp_confidence(g.overall_confidence),
+            "reasoning": g.reasoning,
+        }
+
+    def grade_audio_qa(self, audio_path: str, task: dict = None) -> dict:
+        """Grade the two-question 'qa' oral recording, scoring each question's
+        answer separately so students see exactly which question they lost
+        points on. Returns {transcription, transcription_english, questions:
+        [{scores, feedback, feedback_spanish, confidence_scores}, ...], ...}."""
+        task = task or ORAL_TYPE_DEFAULTS.get("qa", DEFAULT_ORAL_TASK)
+        if not self.client:
+            raise ValueError("Gemini API key not configured. Set GEMINI_API_KEY in environment.")
+
+        mime = MIME_TYPES.get(Path(audio_path).suffix.lower(), "audio/mp4")
+        gemini_file = self.client.files.upload(
+            file=audio_path, config=types.UploadFileConfig(mime_type=mime)
+        )
+        try:
+            response = self._generate([gemini_file, self._build_qa_audio_prompt(task)], AudioQAGradingResponse)
+        finally:
+            try:
+                self.client.files.delete(name=gemini_file.name)
+            except Exception:
+                pass
+
+        g = AudioQAGradingResponse.model_validate_json(response.text)
+
+        def question_result(suffix):
+            return {
+                "scores": apply_lu_cap({
+                    "task_completion": getattr(g, f"score_task_completion_{suffix}"),
+                    "topic_development": getattr(g, f"score_topic_development_{suffix}"),
+                    "language_use": getattr(g, f"score_language_use_{suffix}"),
+                }),
+                "feedback": getattr(g, f"feedback_{suffix}"),
+                "feedback_spanish": getattr(g, f"feedback_spanish_{suffix}"),
+                "confidence_scores": {
+                    "task_completion": clamp_confidence(getattr(g, f"confidence_task_completion_{suffix}")),
+                    "topic_development": clamp_confidence(getattr(g, f"confidence_topic_development_{suffix}")),
+                    "language_use": clamp_confidence(getattr(g, f"confidence_language_use_{suffix}")),
+                },
+            }
+
+        return {
+            "transcription": g.transcription,
+            "transcription_english": g.transcription_english,
+            "questions": [question_result("q1"), question_result("q2")],
             "overall_confidence": clamp_confidence(g.overall_confidence),
             "reasoning": g.reasoning,
         }
