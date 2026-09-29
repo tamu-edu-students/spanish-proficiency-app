@@ -13,7 +13,7 @@ const STRINGS = {
     levelLockedHint:  'Change level before Voice',
     devMode:          'Dev Mode',
     signOut:          'Sign Out',
-    loading:          'Loading Español-AI...',
+    loading:          'Loading Avanza Español...',
 
     // ── grading (essay + speaking) ──
     newPrompt:          'New prompt',
@@ -107,7 +107,7 @@ const STRINGS = {
     levelLockedHint:  'Cambia el nivel antes de Voz',
     devMode:          'Modo desarrollo',
     signOut:          'Cerrar sesión',
-    loading:          'Cargando Español-AI...',
+    loading:          'Cargando Avanza Español...',
 
     // ── grading (essay + speaking) ──
     newPrompt:          'Nueva pregunta',

@@ -204,8 +204,11 @@ function App() {
             alt="Texas A&M University"
             style={{ height: '50px', marginBottom: '12px' }}
           />
-          <p style={{ fontFamily: "'Oswald', sans-serif", fontSize: '26px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#500000', marginBottom: '8px' }}>
-            Español-AI
+          <p style={{ fontFamily: "'Oswald', sans-serif", fontSize: '26px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#500000', marginBottom: '4px' }}>
+            Avanza Español
+          </p>
+          <p style={{ fontFamily: "'Oswald', sans-serif", fontSize: '13px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#a06060', marginBottom: '20px' }}>
+            Spanish for Texas Teachers
           </p>
           <p style={{ fontFamily: "'Open Sans', sans-serif", fontSize: '15px', color: '#707070', marginBottom: '32px', lineHeight: '1.6' }}>
             AI-powered Spanish tutor for Texas A&M students. Sign in with your TAMU NetID to get started.
@@ -233,7 +236,10 @@ function App() {
 
       {/* Mobile header */}
       <div className="header">
-        <span className="app-title">Español-AI</span>
+        <div>
+          <div className="app-title">Avanza Español</div>
+          <div className="app-subtitle">Spanish for Texas Teachers</div>
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: levelLocked ? '12px' : '0' }}>
           <LevelSelect value={userLevel} onChange={setUserLevel} disabled={levelLocked} t={t} />
           {!user.dev_mode && (
@@ -254,7 +260,10 @@ function App() {
           <img src="https://aux.tamu.edu/logos/boxTAM.svg" alt="Texas A&M University" />
         </div>
 
-        <div className="sidebar-title">Español-AI</div>
+        <div className="sidebar-title">
+          Avanza Español
+          <div className="sidebar-subtitle">Spanish for Texas Teachers</div>
+        </div>
 
         <div className="sidebar-language">
           <span className="sidebar-level-label">{t.labels}</span>

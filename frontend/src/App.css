@@ -48,6 +48,16 @@ body {
   text-transform: uppercase;
 }
 
+.app-subtitle {
+  font-family: 'Oswald', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+  margin-top: 2px;
+}
+
 .level-select {
   background: rgba(255,255,255,0.2);
   color: white;
@@ -199,6 +209,16 @@ body {
     letter-spacing: 0.05em;
     text-transform: uppercase;
     border-bottom: 1px solid #f0e8e8;
+  }
+
+  .sidebar-subtitle {
+    font-family: 'Oswald', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: #a06060;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 4px;
   }
 
   /* ── User badge ── */
