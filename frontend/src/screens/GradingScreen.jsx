@@ -68,7 +68,7 @@ function ScoreRow({ label, score, confidence, confLabel }) {
         <span style={{ color: MAROON, fontWeight: 600 }}>
           {score}/3
           {confidence != null && (
-            <span style={{ color: '#999', fontWeight: 400, marginLeft: '6px' }}>
+            <span style={{ color: '#666', fontWeight: 400, marginLeft: '6px' }}>
               {Math.round(confidence * 100)}% {confLabel}
             </span>
           )}
@@ -132,10 +132,10 @@ function Feedback({ text, scores }) {
           const scoreKey = HEADING_TO_SCORE_KEY[b.text.trim().toLowerCase()]
           const score = scores && scoreKey ? scores[scoreKey] : undefined
           return (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '13px', color: MAROON, borderBottom: '1px solid #f0e8e8', paddingBottom: '3px', margin: i ? '16px 0 6px' : '0 0 6px' }}>
+            <h4 key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontFamily: "'Oswald', sans-serif", fontWeight: 400, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '13px', color: MAROON, borderBottom: '1px solid #f0e8e8', paddingBottom: '3px', margin: i ? '16px 0 6px' : '0 0 6px' }}>
               <span>{b.text}</span>
               {score != null && <span>{score}/3</span>}
-            </div>
+            </h4>
           )
         }
         return b.type === 'list' ? (
@@ -192,10 +192,10 @@ function parseMarkdownLite(text) {
   return blocks
 }
 
-function MarkdownLite({ text, style }) {
+function MarkdownLite({ text, style, lang }) {
   if (!text) return null
   return (
-    <div style={style}>
+    <div style={style} lang={lang}>
       {parseMarkdownLite(text).map((b, i) => {
         if (b.type === 'ul' || b.type === 'ol') {
           const Tag = b.type
@@ -230,9 +230,9 @@ function ScoreBlock({ heading, scores, confidenceScores, feedback, feedbackSpani
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '12px' }}>
-        <strong style={{ fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', color: MAROON }}>
+        <h3 style={{ fontFamily: "'Oswald', sans-serif", fontSize: '16px', textTransform: 'uppercase', letterSpacing: '0.08em', color: MAROON }}>
           {heading && `${heading} — `}{t.score} {total}/{max}
-        </strong>
+        </h3>
       </div>
 
       {Object.entries(scores).map(([key, value]) => (
@@ -245,7 +245,9 @@ function ScoreBlock({ heading, scores, confidenceScores, feedback, feedbackSpani
         />
       ))}
 
-      <Feedback text={lang === 'es' ? feedbackSpanish : feedback} scores={scores} />
+      <div lang={lang}>
+        <Feedback text={lang === 'es' ? feedbackSpanish : feedback} scores={scores} />
+      </div>
     </div>
   )
 }
@@ -260,7 +262,7 @@ function Results({ result, t, uiLang }) {
   return (
     <div style={{ background: '#fff', border: '1px solid #e0e0e0', padding: '20px', marginTop: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'baseline', marginBottom: '12px' }}>
-        <span style={{ fontSize: '14px', color: '#888' }}>
+        <span style={{ fontSize: '14px', color: '#666' }}>
           {result.word_count != null && `${result.word_count} ${t.words} · `}
           {t.overallConfidence} {Math.round(result.overall_confidence * 100)}%
         </span>
@@ -271,6 +273,7 @@ function Results({ result, t, uiLang }) {
           <button
             key={l}
             onClick={() => setLang(l)}
+            aria-pressed={lang === l}
             style={{
               padding: '4px 10px', fontSize: '13px', cursor: 'pointer',
               textTransform: 'uppercase', letterSpacing: '0.06em',
@@ -312,9 +315,9 @@ function Results({ result, t, uiLang }) {
       {result.transcription && (
         <details style={{ marginTop: '8px', fontSize: '15px', color: '#555' }}>
           <summary style={{ cursor: 'pointer', color: MAROON }}>{t.transcription}</summary>
-          <p style={{ marginTop: '8px', lineHeight: 1.6 }}>{result.transcription}</p>
+          <p lang="es" style={{ marginTop: '8px', lineHeight: 1.6 }}>{result.transcription}</p>
           {result.transcription_english && (
-            <p style={{ marginTop: '8px', lineHeight: 1.6, color: '#888' }}>{result.transcription_english}</p>
+            <p lang="en" style={{ marginTop: '8px', lineHeight: 1.6, color: '#666' }}>{result.transcription_english}</p>
           )}
         </details>
       )}
@@ -331,22 +334,32 @@ const outlineBtn = {
 const linkBtn = (enabled = true) => ({
   background: 'none', border: 'none', color: MAROON, fontSize: '14px',
   cursor: enabled ? 'pointer' : 'not-allowed', textDecoration: 'underline', padding: 0,
+  minHeight: '24px',
 })
 
 const SPECIAL_CHARS = ['á','é','í','ó','ú','ñ','ü','¿','¡','Á','É','Í','Ó','Ú','Ñ','Ü']
 
-// ponytail: userSelect 'all' per span — one click selects that single character, then cmd-C.
-function AccentBar() {
+// Buttons (not select-to-copy spans) so keyboard and screen-reader users can use them too.
+function AccentBar({ t }) {
+  const [copied, setCopied] = useState('')
+  function copy(ch) {
+    navigator.clipboard?.writeText(ch).then(() => setCopied(ch)).catch(() => {})
+  }
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', margin: '12px 0 4px' }}>
       {SPECIAL_CHARS.map(ch => (
-        <span
+        <button
+          type="button"
           key={ch}
-          style={{ userSelect: 'all', cursor: 'text', minWidth: '30px', textAlign: 'center', padding: '4px 6px', background: '#faf8f8', border: '1px solid #f0e8e8', color: MAROON, fontSize: '17px', lineHeight: 1.2 }}
+          lang="es"
+          aria-label={`${t.copyCharacter} ${ch}`}
+          onClick={() => copy(ch)}
+          style={{ cursor: 'pointer', minWidth: '30px', minHeight: '30px', textAlign: 'center', padding: '4px 6px', background: '#faf8f8', border: '1px solid #c8a0a0', color: MAROON, fontSize: '17px', lineHeight: 1.2 }}
         >
           {ch}
-        </span>
+        </button>
       ))}
+      <span role="status" className="sr-only">{copied && `${t.copied} ${copied}`}</span>
     </div>
   )
 }
@@ -378,14 +391,16 @@ function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendEx
   if (editing) {
     return (
       <div style={{ background: '#faf8f8', border: '1px solid #f0e8e8', padding: '14px', fontSize: '15px', lineHeight: 1.6 }}>
-        <p style={{ fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', color: MAROON, marginBottom: '8px' }}>
+        <p aria-hidden="true" style={{ fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', color: MAROON, marginBottom: '8px' }}>
           {t.ownPromptTitle}
         </p>
-        <AccentBar />
+        <AccentBar t={t} />
         <textarea
           value={draft}
           onChange={e => setDraft(e.target.value)}
           placeholder={t.ownPromptPlaceholder}
+          aria-label={t.ownPromptTitle}
+          lang="es"
           rows={4}
           style={{ width: '100%', padding: '10px', border: '1px solid #e0e0e0', fontSize: '15px', lineHeight: 1.6, fontFamily: 'inherit', resize: 'vertical' }}
         />
@@ -411,13 +426,13 @@ function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendEx
         </span>
       )}
       {loading || !task ? (
-        <p style={{ color: '#888' }}>{t.generatingPrompt}</p>
+        <p role="status" style={{ color: '#666' }}>{t.generatingPrompt}</p>
       ) : (
         <>
-          <MarkdownLite text={task.spanish} style={{ color: MAROON }} />
+          <MarkdownLite lang="es" text={task.spanish} style={{ color: MAROON }} />
           {task.english && allowEnglishToggle && (
             <>
-              {showEnglish && <MarkdownLite text={task.english} style={{ color: '#888', fontSize: '15px', marginTop: '6px' }} />}
+              {showEnglish && <MarkdownLite lang="en" text={task.english} style={{ color: '#666', fontSize: '15px', marginTop: '6px' }} />}
               <button onClick={() => setShowEnglish(s => !s)} style={{ ...linkBtn(), marginTop: '6px' }}>
                 {showEnglish ? t.hideTranslation : t.showTranslation}
               </button>
@@ -426,7 +441,7 @@ function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendEx
         </>
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', gap: '12px', flexWrap: 'wrap' }}>
-        <span style={{ color: '#999', fontSize: '14px' }}>{note}</span>
+        <span style={{ color: '#666', fontSize: '14px' }}>{note}</span>
         {timerLabel && <span style={{ color: MAROON, fontSize: '14px', fontWeight: 600 }}>{timerLabel}</span>}
         <div style={{ display: 'flex', gap: '14px' }}>
           <button onClick={open} style={linkBtn()}>{t.ownPrompt}</button>
@@ -536,16 +551,18 @@ function EssayTab({ sessionId, level, onGraded, lang, essayType }) {
         timerLabel={`${t.yourTime}: ${formatTime(seconds)}`}
         level={level}
       />
-      <AccentBar />
+      <AccentBar t={t} />
       <textarea
         value={essay}
         onChange={handleEssayChange}
         placeholder={t.essayPlaceholder}
+        aria-label={t.essayPlaceholder}
+        lang="es"
         rows={12}
         style={{ width: '100%', padding: '12px', border: '1px solid #e0e0e0', fontSize: '15px', lineHeight: 1.6, fontFamily: 'inherit', resize: 'vertical' }}
       />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-        <span style={{ fontSize: '14px', color: words < wordMin ? '#b06060' : '#5a8a5a' }}>
+        <span style={{ fontSize: '14px', color: words < wordMin ? '#9a4a4a' : '#3d6e3d' }}>
           {words} {t.words} {words < wordMin && t[ESSAY_TYPE_WORD_MIN_LABEL_KEY[essayType] || 'wordsMinimum']}
         </span>
         <button
@@ -556,7 +573,8 @@ function EssayTab({ sessionId, level, onGraded, lang, essayType }) {
           {loading ? t.grading : t.gradeEssay}
         </button>
       </div>
-      {error && <p style={{ color: '#b00', fontSize: '15px', marginTop: '10px' }}>{error}</p>}
+      {error && <p role="alert" style={{ color: '#b00', fontSize: '15px', marginTop: '10px' }}>{error}</p>}
+      <p role="status" className="sr-only">{loading ? t.grading : result ? t.gradingComplete : ''}</p>
       {result && (
         <>
           <Results result={result} t={t} uiLang={lang} />
@@ -728,7 +746,8 @@ function AudioTab({ sessionId, level, onGraded, lang, oralType }) {
         </div>
       )}
 
-      {error && <p style={{ color: '#b00', fontSize: '15px', marginTop: '10px' }}>{error}</p>}
+      {error && <p role="alert" style={{ color: '#b00', fontSize: '15px', marginTop: '10px' }}>{error}</p>}
+      <p role="status" className="sr-only">{loading ? t.grading : result ? t.gradingComplete : ''}</p>
       {result && <Results result={result} t={t} uiLang={lang} />}
     </>
   )
@@ -766,15 +785,15 @@ function GradingScreen({ kind, sessionId, level, lang, essayType = 'opinion', or
             <details key={s.id} style={{ background: '#fff', border: '1px solid #e0e0e0', padding: '10px 12px', marginBottom: '8px', fontSize: '15px' }}>
               <summary style={{ cursor: 'pointer' }}>
                 {s.total_score}/{maxScoreOf(s.result)}
-                <span style={{ color: '#999' }}> · {new Date(s.created_at).toLocaleDateString()}</span>
+                <span style={{ color: '#666' }}> · {new Date(s.created_at).toLocaleDateString()}</span>
                 {s.duration_seconds != null && (
-                  <span style={{ color: '#999' }}> · {t.timeSpent} {formatTime(s.duration_seconds)}</span>
+                  <span style={{ color: '#666' }}> · {t.timeSpent} {formatTime(s.duration_seconds)}</span>
                 )}
               </summary>
               {s.task?.spanish && (
-                <MarkdownLite text={s.task.spanish} style={{ marginTop: '8px', color: MAROON, fontSize: '14px' }} />
+                <MarkdownLite lang="es" text={s.task.spanish} style={{ marginTop: '8px', color: MAROON, fontSize: '14px' }} />
               )}
-              <p style={{ marginTop: '8px', color: '#666', lineHeight: 1.6 }}>{s.text}</p>
+              <p lang="es" style={{ marginTop: '8px', color: '#666', lineHeight: 1.6 }}>{s.text}</p>
               <Results result={s.result} t={t} uiLang={lang} />
             </details>
           ))}

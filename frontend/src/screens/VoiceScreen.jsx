@@ -43,7 +43,7 @@ function VoiceScreen({ level, lang }) {
       if (!recentVoice) {
         activities.unshift({
           label: 'Voice conversation',
-          color: '#E24B4A',
+          color: '#c23b3a',
           time:  new Date().toISOString()
         })
         localStorage.setItem('activities', JSON.stringify(activities.slice(0, 10)))
@@ -257,7 +257,7 @@ function VoiceScreen({ level, lang }) {
     }}>
 
       {/* Title */}
-      <p style={{
+      <h2 style={{
         fontFamily:    "'Oswald', sans-serif",
         fontSize:      '20px',
         fontWeight:    '700',
@@ -267,11 +267,11 @@ function VoiceScreen({ level, lang }) {
         marginBottom:  '4px'
       }}>
         Voice Chat
-      </p>
+      </h2>
       <p style={{
         fontFamily:   "'Open Sans', sans-serif",
         fontSize:     '15px',
-        color:        '#888',
+        color:        '#666',
         marginBottom: '28px',
         textAlign:    'center'
       }}>
@@ -293,7 +293,7 @@ function VoiceScreen({ level, lang }) {
       </div>
 
       {/* Status pill */}
-      <div style={{
+      <div role="status" style={{
         background:   thinking ? '#f5f0f0' : speaking ? '#E1F5EE' : '#f0f0f0',
         borderRadius: '20px',
         padding:      '8px 20px',
@@ -314,7 +314,7 @@ function VoiceScreen({ level, lang }) {
 
       {/* Sound bars when listening */}
       {listening && (
-        <div style={{
+        <div aria-hidden="true" style={{
           display:      'flex',
           alignItems:   'flex-end',
           gap:          '4px',
@@ -340,13 +340,22 @@ function VoiceScreen({ level, lang }) {
       )}
 
       {/* Mic button */}
-      <div
+      <button
+        type="button"
+        disabled={thinking}
+        aria-label={
+          listening ? t.tapWhenDone :
+          speaking  ? t.tapToStop   :
+          thinking  ? t.thinking    :
+                      t.tapToSpeak
+        }
         onClick={
           speaking  ? stopSpeaking  :
           listening ? stopListening :
                       startListening
         }
         style={{
+          border:         'none',
           width:          '120px',
           height:         '120px',
           borderRadius:   '50%',
@@ -363,13 +372,13 @@ function VoiceScreen({ level, lang }) {
           opacity:        thinking ? 0.8 : 1
         }}
       >
-        <span style={{ fontSize: '42px' }}>{micIcon}</span>
-      </div>
+        <span aria-hidden="true" style={{ fontSize: '42px' }}>{micIcon}</span>
+      </button>
 
-      <p style={{
+      <p aria-hidden="true" style={{
         fontFamily:   "'Open Sans', sans-serif",
         fontSize:     '15px',
-        color:        '#888',
+        color:        '#666',
         marginBottom: '16px'
       }}>
         {listening  ? t.tapWhenDone :
@@ -456,9 +465,9 @@ function VoiceScreen({ level, lang }) {
           <p style={{
             fontFamily: "'Open Sans', sans-serif",
             fontSize:   '15px',
-            color:      '#999'
+            color:      '#666'
           }}>
-            Gemini esta pensando en espanol...
+            <span lang="es">Gemini está pensando en español...</span>
           </p>
         </div>
       )}
@@ -484,7 +493,7 @@ function VoiceScreen({ level, lang }) {
           }}>
             Gemini Replied in Spanish
           </p>
-          <p style={{
+          <p lang="es" style={{
             fontFamily: "'Open Sans', sans-serif",
             fontSize:   '15px',
             color:      '#202020',
@@ -498,7 +507,7 @@ function VoiceScreen({ level, lang }) {
       <p style={{
         fontFamily: "'Open Sans', sans-serif",
         fontSize:   '13px',
-        color:      '#bbb',
+        color:      '#666',
         marginTop:  '16px'
       }}>
         Level: {level} - Tap mic to start, tap again to send

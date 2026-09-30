@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { TOPICS } from '../topics'
+import { strings } from '../i18n'
 
 const API = '/api'
 
@@ -14,7 +15,8 @@ const TOPIC_GREETING = {
   'B2': topic => `¡Bienvenido! Soy tu tutor de español. Conversemos sobre ${topic}. ¿Cuál es tu experiencia o perspectiva sobre este tema?`,
 }
 
-function ChatScreen({ level, sessionId }) {
+function ChatScreen({ level, sessionId, lang }) {
+  const t = strings(lang)
   const [topic, setTopic]         = useState(null)
   const [topicDraft, setTopicDraft] = useState('')
   const [messages, setMessages]   = useState([])
@@ -122,7 +124,7 @@ function ChatScreen({ level, sessionId }) {
               style={{
                 padding:      '6px 12px',
                 borderRadius: '20px',
-                border:       '1px solid #e0e0e0',
+                border:       '1px solid #8a8a8a',
                 background:   '#fff',
                 color:        '#666',
                 fontSize:     '14px',
@@ -134,11 +136,12 @@ function ChatScreen({ level, sessionId }) {
           ))}
         </div>
 
-        <p style={{ fontSize: '15px', fontWeight: '500', marginBottom: '8px' }}>
+        <label htmlFor="chat-topic" style={{ display: 'block', fontSize: '15px', fontWeight: '500', marginBottom: '8px' }}>
           Or type your own topic:
-        </p>
+        </label>
         <div style={{ display: 'flex', gap: '8px' }}>
           <input
+            id="chat-topic"
             value={topicDraft}
             onChange={e => setTopicDraft(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') startChat(topicDraft) }}
@@ -149,7 +152,7 @@ function ChatScreen({ level, sessionId }) {
               border:       '1px solid #e0e0e0',
               borderRadius: '10px',
               fontSize:     '15px',
-              outline:      'none'
+              
             }}
           />
           <button
@@ -183,7 +186,7 @@ function ChatScreen({ level, sessionId }) {
         background: '#faf8f8',
         borderBottom: '1px solid #f0e8e8',
         fontSize:   '14px',
-        color:      '#888',
+        color:      '#666',
         fontFamily: "'Open Sans', sans-serif",
         display:    'flex',
         justifyContent: 'space-between',
@@ -196,14 +199,14 @@ function ChatScreen({ level, sessionId }) {
         </span>
         <button
           onClick={changeTopic}
-          style={{ background: 'none', border: 'none', color: '#500000', fontSize: '14px', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+          style={{ background: 'none', border: 'none', color: '#500000', fontSize: '14px', cursor: 'pointer', textDecoration: 'underline', padding: 0, minHeight: '24px' }}
         >
           Change topic
         </button>
       </div>
 
       {/* Message list */}
-      <div style={{
+      <div role="log" aria-live="polite" aria-label={`Conversation about ${topic}`} style={{
         flex:          1,
         overflowY:     'auto',
         padding:       '16px',
@@ -227,7 +230,8 @@ function ChatScreen({ level, sessionId }) {
               fontSize:   '15px',
               lineHeight: '1.5',
               border:     msg.role === 'model' ? '1px solid #e0e0e0' : 'none'
-            }}>
+            }} lang={msg.role === 'model' ? 'es' : undefined}>
+              <span className="sr-only">{msg.role === 'model' ? 'Tutor: ' : 'You: '}</span>
               {msg.parts[0]}
             </div>
           </div>
@@ -241,8 +245,8 @@ function ChatScreen({ level, sessionId }) {
               background:   '#fff',
               border:       '1px solid #e0e0e0',
               fontSize:     '15px',
-              color:        '#888'
-            }}>
+              color:        '#666'
+            }} lang="es">
               Escribiendo...
             </div>
           </div>
@@ -262,18 +266,21 @@ function ChatScreen({ level, sessionId }) {
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Escribe en español..."
+          aria-label="Your message (in Spanish)"
+          lang="es"
           style={{
             flex:         1,
             padding:      '10px 14px',
             border:       '1px solid #e0e0e0',
             borderRadius: '20px',
             fontSize:     '15px',
-            outline:      'none'
+            
           }}
         />
         <button
           onClick={sendMessage}
           disabled={loading}
+          aria-label={t.sendMessage}
           style={{
             width:        '40px',
             height:       '40px',
@@ -285,7 +292,7 @@ function ChatScreen({ level, sessionId }) {
             fontSize:     '17px'
           }}
         >
-          →
+          <span aria-hidden="true">→</span>
         </button>
       </div>
 

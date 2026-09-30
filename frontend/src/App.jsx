@@ -81,6 +81,7 @@ function LevelSelect({ value, onChange, disabled, t }) {
   return (
     <div style={{ position: 'relative' }}>
       <select
+        aria-label={t.proficiencyLevel}
         value={value}
         onChange={e => onChange(e.target.value)}
         disabled={disabled}
@@ -97,7 +98,7 @@ function LevelSelect({ value, onChange, disabled, t }) {
           bottom:     '-18px',
           left:       '0',
           fontSize:   '12px',
-          color:      '#999',
+          color:      '#666',
           whiteSpace: 'nowrap',
           fontFamily: "'Open Sans', sans-serif"
         }}>
@@ -184,7 +185,7 @@ function App() {
   // Loading screen
   if (checkingAuth) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#500000' }}>
+      <div role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#500000' }}>
         <div style={{ textAlign: 'center' }}>
           <img
             src="https://aux.tamu.edu/logos/boxTAM.svg"
@@ -202,16 +203,16 @@ function App() {
   // Login screen
   if (!user) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#500000' }}>
+      <main style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#500000' }}>
         <div style={{ background: 'white', padding: '48px 40px', textAlign: 'center', maxWidth: '400px', width: '90%', borderTop: '6px solid #3C0000' }}>
           <img
             src="https://aux.tamu.edu/logos/boxTAM.svg"
             alt="Texas A&M University"
             style={{ height: '50px', marginBottom: '12px' }}
           />
-          <p style={{ fontFamily: "'Oswald', sans-serif", fontSize: '26px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#500000', marginBottom: '4px' }}>
+          <h1 style={{ fontFamily: "'Oswald', sans-serif", fontSize: '26px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#500000', marginBottom: '4px' }}>
             Avanza Español
-          </p>
+          </h1>
           <p style={{ fontFamily: "'Oswald', sans-serif", fontSize: '13px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#a06060', marginBottom: '20px' }}>
             Spanish for Texas Teachers
           </p>
@@ -226,11 +227,11 @@ function App() {
           >
             Sign in with TAMU NetID
           </button>
-          <p style={{ fontFamily: "'Open Sans', sans-serif", fontSize: '13px', color: '#999' }}>
+          <p style={{ fontFamily: "'Open Sans', sans-serif", fontSize: '13px', color: '#666' }}>
             Uses Texas A&M Central Authentication Service (CAS)
           </p>
         </div>
-      </div>
+      </main>
     )
   }
 
@@ -238,15 +239,24 @@ function App() {
 
   return (
     <div className="app">
+      <a href="#main" className="skip-link">{t.skipToContent}</a>
 
       {/* Mobile header */}
-      <div className="header">
+      <header className="header" lang={labelLanguage}>
         <div>
           <div className="app-title">Avanza Español</div>
           <div className="app-subtitle">Spanish for Texas Teachers</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: levelLocked ? '12px' : '0' }}>
           <LevelSelect value={userLevel} onChange={setUserLevel} disabled={levelLocked} t={t} />
+          <button
+            type="button"
+            className="header-lang-btn"
+            lang={labelLanguage === 'en' ? 'es' : 'en'}
+            onClick={() => setLabelLanguage(labelLanguage === 'en' ? 'es' : 'en')}
+          >
+            {labelLanguage === 'en' ? 'Español' : 'English'}
+          </button>
           {!user.dev_mode && (
             <button
               onClick={logout}
@@ -256,10 +266,10 @@ function App() {
             </button>
           )}
         </div>
-      </div>
+      </header>
 
       {/* Sidebar on desktop / bottom tab bar on mobile */}
-      <div className="tab-bar">
+      <nav className="tab-bar" aria-label={t.mainNavigation} lang={labelLanguage}>
 
         <div className="sidebar-logo">
           <img src="https://aux.tamu.edu/logos/boxTAM.svg" alt="Texas A&M University" />
@@ -276,6 +286,8 @@ function App() {
             <button
               type="button"
               className={labelLanguage === 'en' ? 'language-toggle-btn active' : 'language-toggle-btn'}
+              aria-pressed={labelLanguage === 'en'}
+              lang="en"
               onClick={() => setLabelLanguage('en')}
             >
               English
@@ -283,6 +295,8 @@ function App() {
             <button
               type="button"
               className={labelLanguage === 'es' ? 'language-toggle-btn active' : 'language-toggle-btn'}
+              aria-pressed={labelLanguage === 'es'}
+              lang="es"
               onClick={() => setLabelLanguage('es')}
             >
               Español
@@ -323,6 +337,7 @@ function App() {
               <Fragment key={tabKey}>
                 <button
                   className={`tab-btn ${activeTab === tabKey ? 'active' : ''}`}
+                  aria-current={activeTab === tabKey ? 'page' : undefined}
                   onClick={() => setActiveTab(tabKey)}
                 >
                   {tabLabels[tabKey]}
@@ -331,6 +346,7 @@ function App() {
                   <button
                     key={type}
                     className={`tab-btn tab-subitem ${essayType === type ? 'active' : ''}`}
+                    aria-current={essayType === type ? 'true' : undefined}
                     onClick={() => setEssayType(type)}
                   >
                     {t[WRITING_TYPE_LABEL_KEY[type]]}
@@ -340,6 +356,7 @@ function App() {
                   <button
                     key={type}
                     className={`tab-btn tab-subitem ${oralType === type ? 'active' : ''}`}
+                    aria-current={oralType === type ? 'true' : undefined}
                     onClick={() => setOralType(type)}
                   >
                     {t[ORAL_TYPE_LABEL_KEY[type]]}
@@ -350,10 +367,11 @@ function App() {
           </div>
         ))}
 
-      </div>
+      </nav>
 
       {/* Main content */}
-      <div className="screen-area">
+      <main id="main" className="screen-area" tabIndex={0}>
+        <h1 className="sr-only">{`Avanza Español: ${tabLabels[activeTab]}`}</h1>
         {activeTab === 'chat'      && <ChatScreen      level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
         {activeTab === 'flashcard' && <FlashcardScreen level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
         {activeTab === 'quiz'      && <QuizScreen      level={userLevel} sessionId={SESSION_ID} quizType="grammar" lang={labelLanguage} />}
@@ -366,7 +384,7 @@ function App() {
         {activeTab === 'oral'      && <GradingScreen   key={oralType} kind="audio" oralType={oralType} level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
         {activeTab === 'progress'  && <ProgressScreen  level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
         {activeTab === 'voice'     && <VoiceScreen     level={userLevel} lang={labelLanguage} />}
-      </div>
+      </main>
 
     </div>
   )

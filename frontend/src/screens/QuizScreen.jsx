@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import axios from 'axios'
 import { strings } from '../i18n'
 
@@ -16,6 +16,12 @@ function QuizScreen({ level, sessionId, lang, quizType = 'grammar' }) {
   const [loading, setLoading]           = useState(false)
   const quizMode = quizType
   const [passage, setPassage]           = useState('')
+  const questionRef                     = useRef(null)
+
+  // Answer buttons get disabled/replaced between questions; keep focus on the new question
+  useEffect(() => {
+    if (questionNum > 0) questionRef.current?.focus()
+  }, [questionNum])
 
   const currentQuestion = questions[questionNum - 1] || null
   const totalQuestions = quizMode === 'reading' ? 5 : TOTAL_Q
@@ -140,10 +146,10 @@ function QuizScreen({ level, sessionId, lang, quizType = 'grammar' }) {
   if (questionNum === 0 && !loading) {
     return (
       <div style={{ padding: '24px', textAlign: 'center' }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>📝</div>
-        <p style={{ fontSize: '19px', fontWeight: '600', color: '#333', marginBottom: '8px' }}>
+        <div aria-hidden="true" style={{ fontSize: '48px', marginBottom: '16px' }}>📝</div>
+        <h2 style={{ fontSize: '19px', fontWeight: '600', color: '#333', marginBottom: '8px' }}>
           {quizMode === 'reading' ? t.readingQuizTitle : t.grammarQuizTitle}
-        </p>
+        </h2>
         <p style={{ fontSize: '15px', color: '#666', lineHeight: '1.6', marginBottom: '16px' }}>
           {quizMode === 'reading'
             ? 'Read a Spanish passage and answer 5 questions about what you read.'
@@ -166,13 +172,13 @@ function QuizScreen({ level, sessionId, lang, quizType = 'grammar' }) {
   // LOADING SCREEN — only shown once at the start
   if (loading) {
     return (
-      <div style={{ padding: '60px 24px', textAlign: 'center', color: '#666' }}>
+      <div role="status" style={{ padding: '60px 24px', textAlign: 'center', color: '#666' }}>
         <div style={{ width: '48px', height: '48px', border: '4px solid #f0e8e8', borderTop: '4px solid #500000', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 24px' }} />
         <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
         <p style={{ fontSize: '17px', fontWeight: '600', color: '#500000', marginBottom: '8px' }}>
           Preparing your quiz...
         </p>
-        <p style={{ fontSize: '15px', color: '#999' }}>
+        <p style={{ fontSize: '15px', color: '#666' }}>
           Gemini is generating {totalQuestions} {level} level questions
         </p>
       </div>
@@ -191,10 +197,10 @@ function QuizScreen({ level, sessionId, lang, quizType = 'grammar' }) {
 
     return (
       <div style={{ padding: '32px 24px', textAlign: 'center' }}>
-        <div style={{ fontSize: '56px', marginBottom: '12px' }}>{emoji}</div>
-        <p style={{ fontFamily: "'Oswald', sans-serif", fontSize: '22px', fontWeight: '700', color: '#500000', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <div aria-hidden="true" style={{ fontSize: '56px', marginBottom: '12px' }}>{emoji}</div>
+        <h2 style={{ fontFamily: "'Oswald', sans-serif", fontSize: '22px', fontWeight: '700', color: '#500000', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
           Quiz Complete
-        </p>
+        </h2>
         <p style={{ fontSize: '15px', color: '#666', marginBottom: '28px' }}>{message}</p>
 
         <div style={{
@@ -212,16 +218,16 @@ function QuizScreen({ level, sessionId, lang, quizType = 'grammar' }) {
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', marginBottom: '32px' }}>
           <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: '22px', fontWeight: '700', color: '#1D9E75' }}>{sessionScore}</p>
-            <p style={{ fontSize: '13px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Correct</p>
+            <p style={{ fontSize: '22px', fontWeight: '700', color: '#0F6E56' }}>{sessionScore}</p>
+            <p style={{ fontSize: '13px', color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Correct</p>
           </div>
           <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: '22px', fontWeight: '700', color: '#E24B4A' }}>{totalQuestions - sessionScore}</p>
-            <p style={{ fontSize: '13px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Incorrect</p>
+            <p style={{ fontSize: '22px', fontWeight: '700', color: '#c23b3a' }}>{totalQuestions - sessionScore}</p>
+            <p style={{ fontSize: '13px', color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Incorrect</p>
           </div>
           <div style={{ textAlign: 'center' }}>
             <p style={{ fontSize: '22px', fontWeight: '700', color: '#500000' }}>{pct}%</p>
-            <p style={{ fontSize: '13px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Score</p>
+            <p style={{ fontSize: '13px', color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Score</p>
           </div>
         </div>
 
@@ -242,7 +248,7 @@ function QuizScreen({ level, sessionId, lang, quizType = 'grammar' }) {
       {/* Progress bar */}
       <div style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-          <span style={{ fontSize: '14px', color: '#888', fontFamily: "'Open Sans', sans-serif" }}>
+          <span style={{ fontSize: '14px', color: '#666', fontFamily: "'Open Sans', sans-serif" }}>
             Question {questionNum} of {totalQuestions}
           </span>
           <span style={{ fontSize: '14px', color: '#500000', fontWeight: '600', fontFamily: "'Open Sans', sans-serif" }}>
@@ -265,7 +271,7 @@ function QuizScreen({ level, sessionId, lang, quizType = 'grammar' }) {
           <p style={{ fontSize: '15px', color: '#500000', fontWeight: '500', marginBottom: '10px' }}>
             Read the passage
           </p>
-          <p style={{ fontSize: '17px', color: '#333', lineHeight: '1.7', whiteSpace: 'pre-wrap' }}>
+          <p lang="es" style={{ fontSize: '17px', color: '#333', lineHeight: '1.7', whiteSpace: 'pre-wrap' }}>
             {passage}
           </p>
         </div>
@@ -279,19 +285,19 @@ function QuizScreen({ level, sessionId, lang, quizType = 'grammar' }) {
       </div>
 
       {/* Question card */}
-      <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '16px', padding: '20px', marginBottom: '16px' }}>
+      <div ref={questionRef} tabIndex={-1} style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '16px', padding: '20px', marginBottom: '16px' }}>
         <p style={{ fontSize: '15px', color: '#500000', fontWeight: '500', marginBottom: '10px' }}>
           {quizMode === 'reading' ? t.comprehensionQuestion : t.fillInTheBlank}
         </p>
-        <p style={{ fontSize: '18px', color: '#333', lineHeight: '1.6' }}>
+        <p lang="es" style={{ fontSize: '18px', color: '#333', lineHeight: '1.6' }}>
           {quizMode === 'reading' ? currentQuestion.question : currentQuestion.sentence}
         </p>
       </div>
 
       {/* Answer options */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+      <div lang="es" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
         {currentQuestion.options.map((option, i) => {
-          let bg = '#fff', border = '#e0e0e0', color = '#333'
+          let bg = '#fff', border = '#8a8a8a', color = '#333'
           if (selected) {
             if (option === currentQuestion.answer)                             { bg = '#E1F5EE'; border = '#1D9E75'; color = '#085041' }
             else if (option === selected && option !== currentQuestion.answer) { bg = '#FCEBEB'; border = '#E24B4A'; color = '#501313' }
@@ -305,20 +311,28 @@ function QuizScreen({ level, sessionId, lang, quizType = 'grammar' }) {
             >
               <span style={{
                 width: '24px', height: '24px', borderRadius: '50%', flexShrink: 0,
-                background: selected && option === currentQuestion.answer ? '#1D9E75'
-                  : selected && option === selected && option !== currentQuestion.answer ? '#E24B4A' : '#f0f0f0',
+                background: selected && option === currentQuestion.answer ? '#15795a'
+                  : selected && option === selected && option !== currentQuestion.answer ? '#c23b3a' : '#f0f0f0',
                 color: selected && (option === currentQuestion.answer || option === selected) ? '#fff' : '#666',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '500'
               }}>
                 {['A','B','C','D'][i]}
               </span>
               {option}
+              {/* Correct/wrong marked by symbol + text, not colour alone */}
+              {selected && option === currentQuestion.answer && (
+                <><span aria-hidden="true" style={{ marginLeft: 'auto', fontWeight: 700 }}>✓</span><span className="sr-only" lang={lang}>{t.correctAnswer}</span></>
+              )}
+              {selected && option === selected && option !== currentQuestion.answer && (
+                <><span aria-hidden="true" style={{ marginLeft: 'auto', fontWeight: 700 }}>✗</span><span className="sr-only" lang={lang}>{t.yourAnswer}</span></>
+              )}
             </button>
           )
         })}
       </div>
 
-      {/* Feedback */}
+      {/* Feedback — the live region stays mounted so the new text is announced */}
+      <div role="status" lang="es">
       {selected && feedback && (
         <div style={{ padding: '14px', background: selected === currentQuestion.answer ? '#E1F5EE' : '#FCEBEB', border: `1px solid ${selected === currentQuestion.answer ? '#5DCAA5' : '#F09595'}`, borderRadius: '12px', marginBottom: '16px' }}>
           <p style={{ fontSize: '15px', fontWeight: '500', color: selected === currentQuestion.answer ? '#085041' : '#501313', marginBottom: '4px' }}>
@@ -329,10 +343,12 @@ function QuizScreen({ level, sessionId, lang, quizType = 'grammar' }) {
           </p>
         </div>
       )}
+      </div>
 
       {/* Next / Finish button */}
       {selected && (
         <button
+          autoFocus
           onClick={nextQuestion}
           style={{ width: '100%', padding: '14px', background: '#500000', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '500', cursor: 'pointer' }}
         >

@@ -38,6 +38,8 @@ body {
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+  flex-wrap: wrap;   /* narrow phones: controls drop below the title */
+  gap: 8px;
 }
 
 .app-title {
@@ -109,7 +111,7 @@ body {
   border: none;
   background: transparent;
   font-size: 13px;
-  color: #888;
+  color: #666;
   cursor: pointer;
   border-top: 3px solid transparent;
   transition: all 0.15s;
@@ -248,7 +250,7 @@ body {
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: #999;
+    color: #666;
     margin-bottom: 4px;
   }
 
@@ -262,7 +264,7 @@ body {
   .user-email {
     font-family: 'Open Sans', sans-serif;
     font-size: 13px;
-    color: #888;
+    color: #666;
     margin-top: 2px;
     margin-bottom: 8px;
   }
@@ -305,7 +307,7 @@ body {
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: #999;
+    color: #666;
     margin-bottom: 6px;
   }
 
@@ -350,7 +352,6 @@ body {
     padding: 10px 12px;
     font-size: 15px;
     cursor: pointer;
-    outline: none;
   }
 
   /* Desktop nav buttons */
@@ -362,7 +363,7 @@ body {
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: #999;
+    color: #666;
     padding: 14px 24px 4px;
   }
 
@@ -418,4 +419,52 @@ body {
     font-size: 13.5px;
     padding-left: 44px;
   }
+}
+
+/* ── Accessibility ── */
+:focus-visible {
+  outline: 3px solid #500000;
+  outline-offset: 2px;
+}
+/* Maroon ring would vanish on the maroon header/logo block */
+.header :focus-visible { outline-color: #fff; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -48px;
+  z-index: 100;
+  background: #500000;
+  color: #fff;
+  padding: 8px 16px;
+  font-weight: 600;
+}
+.skip-link:focus { top: 8px; }
+
+/* Text inputs need a 3:1 boundary (WCAG 1.4.11) */
+input:not([type="file"]), textarea { border-color: #8a8a8a !important; }
+
+/* Mobile-only language switch (.header is hidden on desktop) */
+.header-lang-btn {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.5);
+  padding: 4px 10px;
+  font-size: 13px;
+  font-family: 'Oswald', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
 }

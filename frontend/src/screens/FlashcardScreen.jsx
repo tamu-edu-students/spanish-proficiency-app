@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import axios from 'axios'
 import { strings } from '../i18n'
 import { TOPICS } from '../topics'
@@ -14,6 +14,12 @@ function FlashcardScreen({ level, sessionId, lang }) {
   const [loading, setLoading]           = useState(false)
   const [done, setDone]                 = useState(false)
   const [score, setScore]               = useState({ good: 0, hard: 0, again: 0 })
+  const cardRef                         = useRef(null)
+
+  // Rating buttons unmount when the next card shows; put focus back on the card
+  useEffect(() => {
+    if (currentIndex > 0) cardRef.current?.focus()
+  }, [currentIndex])
 
   async function generateCards() {
     setLoading(true)
@@ -41,7 +47,7 @@ function FlashcardScreen({ level, sessionId, lang }) {
       if (!recentFlashcard) {
         activities.unshift({
           label: 'Flashcard session',
-          color: '#1D9E75',
+          color: '#0F6E56',
           time:  new Date().toISOString()
         })
         localStorage.setItem('activities', JSON.stringify(activities.slice(0, 10)))
@@ -107,11 +113,12 @@ function FlashcardScreen({ level, sessionId, lang }) {
             <button
               key={t}
               onClick={() => setTopic(t)}
+              aria-pressed={topic === t}
               style={{
                 padding:      '6px 12px',
                 borderRadius: '20px',
                 border:       '1px solid',
-                borderColor:  topic === t ? '#500000' : '#e0e0e0',
+                borderColor:  topic === t ? '#500000' : '#8a8a8a',
                 background:   topic === t ? '#500000' : '#fff',
                 color:        topic === t ? '#fff'    : '#666',
                 fontSize:     '14px',
@@ -123,10 +130,11 @@ function FlashcardScreen({ level, sessionId, lang }) {
           ))}
         </div>
 
-        <p style={{ fontSize: '15px', fontWeight: '500', marginBottom: '8px' }}>
+        <label htmlFor="cards-topic" style={{ display: 'block', fontSize: '15px', fontWeight: '500', marginBottom: '8px' }}>
           Or type your own topic:
-        </p>
+        </label>
         <input
+          id="cards-topic"
           value={topic}
           onChange={e => setTopic(e.target.value)}
           placeholder={t.cardsTopicPlaceholder}
@@ -137,7 +145,7 @@ function FlashcardScreen({ level, sessionId, lang }) {
             borderRadius: '10px',
             fontSize:     '15px',
             marginBottom: '20px',
-            outline:      'none'
+            
           }}
         />
 
@@ -168,18 +176,18 @@ function FlashcardScreen({ level, sessionId, lang }) {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
 
-        <div style={{ fontSize: '40px', marginBottom: '12px' }}>🎉</div>
+        <div aria-hidden="true" style={{ fontSize: '40px', marginBottom: '12px' }}>🎉</div>
 
-        <p style={{ fontSize: '19px', fontWeight: '500', marginBottom: '6px' }}>
+        <h2 style={{ fontSize: '19px', fontWeight: '500', marginBottom: '6px' }}>
           Sesion completada!
-        </p>
+        </h2>
         <p style={{ fontSize: '15px', color: '#666', marginBottom: '24px' }}>
           You went through all {cards.length} cards
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '24px' }}>
           {[
-            { label: 'Good',  value: score.good,  color: '#1D9E75', bg: '#E1F5EE' },
+            { label: 'Good',  value: score.good,  color: '#0F6E56', bg: '#E1F5EE' },
             { label: 'Hard',  value: score.hard,  color: '#854F0B', bg: '#FAEEDA' },
             { label: 'Again', value: score.again, color: '#A32D2D', bg: '#FCEBEB' },
           ].map(s => (
@@ -240,7 +248,14 @@ function FlashcardScreen({ level, sessionId, lang }) {
 
       {/* Flashcard */}
       <div
+        ref={cardRef}
+        role="button"
+        tabIndex={0}
+        aria-live="polite"
         onClick={() => setFlipped(!flipped)}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFlipped(!flipped) }
+        }}
         style={{
           background: '#fff', border: '1px solid #e0e0e0', borderRadius: '16px',
           padding: '40px 24px', textAlign: 'center', minHeight: '200px',
@@ -251,10 +266,10 @@ function FlashcardScreen({ level, sessionId, lang }) {
       >
         {!flipped ? (
           <>
-            <p style={{ fontSize: '28px', fontWeight: '600', color: '#333', marginBottom: '8px' }}>
+            <p lang="es" style={{ fontSize: '28px', fontWeight: '600', color: '#333', marginBottom: '8px' }}>
               {card.word}
             </p>
-            <p style={{ fontSize: '15px', color: '#999' }}>{t.tapToSeeTranslation}</p>
+            <p style={{ fontSize: '15px', color: '#666' }}>{t.tapToSeeTranslation}</p>
           </>
         ) : (
           <>
@@ -267,7 +282,7 @@ function FlashcardScreen({ level, sessionId, lang }) {
             {card.example && (
               <>
                 <div style={{ height: '1px', background: '#e0e0e0', width: '60%', marginBottom: '12px' }} />
-                <p style={{ fontSize: '15px', color: '#666', fontStyle: 'italic', lineHeight: '1.5' }}>
+                <p lang="es" style={{ fontSize: '15px', color: '#666', fontStyle: 'italic', lineHeight: '1.5' }}>
                   "{card.example}"
                 </p>
               </>
