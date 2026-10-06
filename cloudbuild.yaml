@@ -32,6 +32,8 @@ steps:
       - '--no-cpu-throttling'
       - '--set-secrets'
       - 'SECRET_KEY=django-secret-key:latest,GEMINI_API_KEY=gemini-api-key:latest,DATABASE_URL=database-url:latest'
+      - '--set-env-vars'
+      - 'DEBUG=False,DEV_MODE=True,ALLOWED_HOSTS=spanish-app-556840267200.us-central1.run.app,CSRF_TRUSTED_ORIGINS=https://spanish-app-556840267200.us-central1.run.app,FRONTEND_ORIGIN=https://spanish-app-556840267200.us-central1.run.app,CAS_REDIRECT_URL=https://spanish-app-556840267200.us-central1.run.app'
 
 images:
   - 'us-central1-docker.pkg.dev/$PROJECT_ID/spanish-app/spanish-app:$BUILD_ID'
