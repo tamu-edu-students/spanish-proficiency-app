@@ -74,3 +74,20 @@ class Submission(models.Model):
 
     def __str__(self):
         return f"{self.kind} - {self.session_id} - {self.total_score}"
+
+
+# Pre-generated task prompts, so the Writing/Oral screens don't wait on Gemini.
+# One row is served and deleted per request; prompt_pool refills in the background.
+class PromptPool(models.Model):
+
+    kind       = models.CharField(max_length=10)               # essay / audio
+    task_type  = models.CharField(max_length=20, blank=True)   # essay_type or oral_type
+    level      = models.CharField(max_length=5)
+    task       = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['kind', 'task_type', 'level'])]
+
+    def __str__(self):
+        return f"{self.kind}/{self.task_type}/{self.level}"

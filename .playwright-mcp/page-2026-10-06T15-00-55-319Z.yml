@@ -1,0 +1,73 @@
+- generic [ref=e7]:
+  - link "Skip to main content" [ref=e8] [cursor=pointer]:
+    - /url: "#main"
+  - navigation "Main navigation" [ref=e9]:
+    - img "Texas A&M University" [ref=e11]
+    - generic [ref=e12]:
+      - text: Avanza Español
+      - generic [ref=e13]: Spanish for Texas Teachers
+    - generic [ref=e14]:
+      - generic [ref=e15]: Labels
+      - generic [ref=e16]:
+        - button "English" [pressed] [ref=e17] [cursor=pointer]
+        - button "Español" [ref=e18] [cursor=pointer]
+    - generic [ref=e20]:
+      - generic [ref=e21]: Dev Mode
+      - paragraph [ref=e22]: Dev User
+    - generic [ref=e23]:
+      - generic [ref=e24]: Proficiency Level
+      - combobox "Proficiency Level" [ref=e26] [cursor=pointer]:
+        - option "A1 - Beginner" [selected]
+        - option "A2 - Elementary"
+        - option "B1 - Intermediate"
+        - option "B2 - Upper Intermediate"
+    - button "Listening — Coming soon" [disabled] [ref=e28]
+    - generic [ref=e29]:
+      - button "Graded Speaking" [ref=e30] [cursor=pointer]
+      - button "Voice" [ref=e31] [cursor=pointer]
+    - button "Oral Tasks" [ref=e33] [cursor=pointer]
+    - button "Reading" [ref=e35] [cursor=pointer]
+    - generic [ref=e36]:
+      - button "Writing" [ref=e37] [cursor=pointer]
+      - button "Opinion/Position Essay" [ref=e69] [cursor=pointer]
+      - button "Response to letters, memos, or emails" [active] [ref=e70] [cursor=pointer]
+      - button "Lesson Plan" [ref=e71] [cursor=pointer]
+    - generic [ref=e38]:
+      - button "Chat" [ref=e39] [cursor=pointer]
+      - button "Cards" [ref=e40] [cursor=pointer]
+      - button "Grammar Quiz" [ref=e41] [cursor=pointer]
+      - button "Progress" [ref=e42] [cursor=pointer]
+  - main [ref=e43]:
+    - 'heading "Avanza Español: Writing" [level=1] [ref=e72]'
+    - generic [ref=e115]:
+      - generic [ref=e116]:
+        - status [ref=e117]: Generating a prompt...
+        - generic [ref=e118]:
+          - generic [ref=e119]: Minimum 75 words. No upper limit.
+          - generic [ref=e120]: "Your time: 00:00"
+          - generic [ref=e121]:
+            - button "Write your own prompt" [ref=e122] [cursor=pointer]
+            - button "New prompt" [disabled] [ref=e123]
+      - generic [ref=e124]:
+        - button "Copy á" [ref=e125] [cursor=pointer]: á
+        - button "Copy é" [ref=e126] [cursor=pointer]: é
+        - button "Copy í" [ref=e127] [cursor=pointer]: í
+        - button "Copy ó" [ref=e128] [cursor=pointer]: ó
+        - button "Copy ú" [ref=e129] [cursor=pointer]: ú
+        - button "Copy ñ" [ref=e130] [cursor=pointer]: ñ
+        - button "Copy ü" [ref=e131] [cursor=pointer]: ü
+        - button "Copy ¿" [ref=e132] [cursor=pointer]: ¿
+        - button "Copy ¡" [ref=e133] [cursor=pointer]: ¡
+        - button "Copy Á" [ref=e134] [cursor=pointer]: Á
+        - button "Copy É" [ref=e135] [cursor=pointer]: É
+        - button "Copy Í" [ref=e136] [cursor=pointer]: Í
+        - button "Copy Ó" [ref=e137] [cursor=pointer]: Ó
+        - button "Copy Ú" [ref=e138] [cursor=pointer]: Ú
+        - button "Copy Ñ" [ref=e139] [cursor=pointer]: Ñ
+        - button "Copy Ü" [ref=e140] [cursor=pointer]: Ü
+        - status [ref=e141]
+      - textbox "Write your essay here..." [ref=e142]
+      - generic [ref=e143]:
+        - generic [ref=e144]: 0 words (75 minimum)
+        - button "Grade essay" [disabled] [ref=e145]
+      - status [ref=e146]

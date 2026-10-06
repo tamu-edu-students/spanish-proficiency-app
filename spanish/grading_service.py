@@ -2,6 +2,7 @@
 
 Ported from the spanish-grading-app FastAPI service; prompts kept verbatim.
 """
+import re
 from pathlib import Path
 from pydantic import BaseModel
 from django.conf import settings
@@ -368,19 +369,27 @@ ESSAY_TYPE_SHAPES = {
     "opinion": (
         "an opinion question about a school, community or everyday policy — phrased so the "
         "writer must take a side AND give at least two advantages and two disadvantages. "
-        "End the Spanish prompt with: 'Sustenta tus ideas indicando un mínimo de dos ventajas "
-        "y dos desventajas.'"
+        "Put the question in instructions, ending with: 'Sustenta tus ideas indicando un mínimo "
+        "de dos ventajas y dos desventajas.' Leave heading and content empty."
     ),
     "correspondence": (
-        "a short letter, memo or email ADDRESSED TO the student (from a principal, parent, "
-        "colleague or district office) that asks two or three specific questions or requests. "
-        "Quote the message in full, then instruct the student to write a reply in Spanish with "
-        "an appropriate greeting, answers to every point raised, and a closing."
+        "a message in the student's inbox. The student is a bilingual teacher at an invented "
+        "Texas elementary school (make up the school name); address the teacher by role and grade "
+        "(e.g. 'Maestra de tercer grado'), never by a placeholder. The message is FROM a parent, the "
+        "principal, or the PTO president — invent a realistic full name for the sender (Hispanic "
+        "names are fine) and sign the message with that name and role. Pick ONE format: email "
+        "(start content with lines 'De:', 'Para:', 'Asunto:'), memo (lines 'A:', 'De:', 'Fecha:', "
+        "'Asunto:') or letter (date, greeting). The message must ask two or three specific "
+        "questions or requests. heading names the format and the sender, e.g. 'Correo "
+        "electrónico de la Sra. Lucía Morales (madre de familia)'. content is the full message. "
+        "instructions tell the student to write a reply in Spanish with an appropriate greeting, "
+        "answers to every point raised, and a closing."
     ),
     "lesson_plan": (
-        "a lesson-plan writing task for a bilingual classroom. Give a Subject/content area, a "
-        "specific Topic, and ONE measurable, action-oriented learning objective (the grade level "
-        "should be implied by or stated alongside the objective). Instruct the student to write a "
+        "a lesson-plan writing task for a bilingual classroom. content gives a Subject/content "
+        "area, a specific Topic, and ONE measurable, action-oriented learning objective (the grade "
+        "level should be implied by or stated alongside the objective), one per line; heading is "
+        "'Plan de clase'. instructions tell the student to write a "
         "lesson plan in Spanish covering all five required categories: Grado escolar (grade), "
         "Vocabulario, Materiales, Procedimientos, and Evaluación — with the procedures clearly "
         "working toward the objective and the evaluation measuring whether students achieved it."
@@ -402,8 +411,9 @@ ORAL_TYPE_SHAPES = {
         "'Turno 4' — each ONE conversational question or remark spoken BY THE OTHER PERSON (never "
         "the student), that progressively develop the situation so the student must: (1) provide "
         "information, (2) explain or justify something, (3) respond to a follow-up, and (4) close "
-        "the interaction appropriately with Turno 4 including a farewell. Format the Spanish field "
-        "EXACTLY as:\nEscenario: <setup>\n\nTurno 1: <line>\nTurno 2: <line>\nTurno 3: <line>\n"
+        "the interaction appropriately with Turno 4 including a farewell. instructions tell the "
+        "student to respond aloud to each turn as in a real conversation; heading is 'Conversación'. "
+        "Format content EXACTLY as:\nEscenario: <setup>\n\nTurno 1: <line>\nTurno 2: <line>\nTurno 3: <line>\n"
         "Turno 4: <line>\nDo not write the student's responses — only the setup and the other "
         "person's 4 lines."
     ),
@@ -415,18 +425,19 @@ ORAL_TYPE_SHAPES = {
         "development — followed by exactly two RELATED questions a colleague or supervisor asks "
         "about it: Question 1 must require concrete details, examples, or a plan; Question 2 must "
         "require an explanation of benefits, justification, or consequences that builds on "
-        "Question 1. Each question needs a detailed 60-second spoken answer. Format the Spanish "
-        "field EXACTLY as:\nEscenario: <setup>\n\nPregunta 1: <opening question>\n\n"
+        "Question 1. Each question needs a detailed 60-second spoken answer. instructions tell the "
+        "student to answer both questions aloud in one recording; heading is 'Preguntas'. Format "
+        "content EXACTLY as:\nEscenario: <setup>\n\nPregunta 1: <opening question>\n\n"
         "Pregunta 2: <follow-up question>"
     ),
     "presentation": (
         "a classroom-oriented oral-presentation task for a bilingual teacher. Give a Grade level, "
         "a content-area Subject (history, science, mathematics, social studies, literature, "
         "culture, geography, health, or environmental science), and an academic Topic within that "
-        "subject. Instruct the student to give a short presentation to their class that: "
+        "subject. instructions tell the student to give a short presentation to their class that: "
         "introduces the topic, explains 2-3 important ideas, provides an example, connects the "
         "topic to the students, uses appropriate content-area vocabulary, and ends with a brief "
-        "transition or conclusion. Format the Spanish field EXACTLY as:\nGrado: <grade>\n"
+        "transition or conclusion. heading is 'Presentación'. Format content EXACTLY as:\nGrado: <grade>\n"
         "Tema: <topic>\n\nInformación de apoyo:\n- <point>\n- <point>\n- <point>"
     ),
     "situation": (
@@ -435,12 +446,12 @@ ORAL_TYPE_SHAPES = {
         "workshop formats, two approaches to classroom technology, two methods of organizing a "
         "school event, different approaches to family communication, competing instructional "
         "strategies, alternative student-support plans, classroom resource choices, scheduling "
-        "options, or methods of student assessment. End with a sentence asking the student to "
+        "options, or methods of student assessment. instructions ask the student to "
         "(1) clearly state a preference or recommendation, (2) provide at least two convincing "
         "reasons, (3) explain how the choice benefits students, families, teachers, or the "
         "school, and (4) address the practical consequences of the recommendation, in a 2-minute "
-        "response. Do not make one option obviously correct. Format the Spanish field EXACTLY "
-        "as:\nSituación: <description>\n\n<closing instruction sentence>"
+        "response. Do not make one option obviously correct. heading is 'Situación'; content is "
+        "the description of the situation and its alternatives."
     ),
 }
 
@@ -466,9 +477,30 @@ ORAL_TYPE_DEFAULTS = {
 
 
 class TaskPromptResponse(BaseModel):
-    """Schema for a generated task prompt."""
-    spanish: str
-    english: str
+    """Schema for a generated task prompt. Instructions are kept apart from the
+    material (message, scenario, topic) so the UI can show them first and label
+    the material with a heading. Multi-line fields are lists of lines: Gemini's
+    constrained JSON output often drops \\n inside strings, gluing lines together."""
+    instructions: list[str]
+    instructions_english: list[str]
+    heading: str
+    heading_english: str
+    content: list[str]
+    content_english: list[str]
+
+
+def _plain(text: str) -> str:
+    """Strip the markdown Gemini sometimes adds anyway (**bold**, __, # headings, > quotes)."""
+    text = (text or "").replace("\\n", "\n")   # double-escaped newlines arrive as literal \n
+    text = re.sub(r"\*\*|__", "", text)
+    text = re.sub(r"^[ \t]*(#+|>)[ \t]*", "", text, flags=re.M)
+    return text.strip()
+
+
+def _compose(instructions: str, heading: str, content: str) -> str:
+    """Single-string form of a task — what the rater reads and history stores."""
+    material = "\n".join(p for p in (heading, content) if p)
+    return "\n\n".join(p for p in (instructions, material) if p)
 
 
 # ---------------------------------------------------------------------------
@@ -908,7 +940,8 @@ Respond using the exact fields requested.
         )
 
     def generate_task(self, kind: str, level: str = "B1", essay_type: str = "opinion", oral_type: str = None) -> dict:
-        """Generate a fresh, level-appropriate task prompt. Returns {spanish, english}."""
+        """Generate a fresh, level-appropriate task prompt. Returns {spanish, english} plus the
+        structured instructions/heading/content fields (live generation only)."""
         if not self.client:
             if kind == "essay":
                 return DEFAULT_ESSAY_TASK
@@ -935,11 +968,25 @@ Level {level} guidance: {LEVEL_GUIDANCE.get(level, LEVEL_GUIDANCE["B1"])}
 
 Pick a topic that is NOT this example, and not about school uniforms or travel: "{example}"
 
-Return the prompt in Spanish, plus a faithful English translation."""
+Fields:
+- instructions: what the student must do (shown FIRST, above everything else), as a list of lines.
+- heading: a short label naming what the content is, or empty if there is no separate material.
+- content: the material the student responds to (message, scenario, topic) as a list of lines,
+  or an empty list. Every header line (De:, Para:, Asunto:), greeting, paragraph, bullet,
+  numbered item, closing and signature line is its OWN list element.
+Each *_english field is a faithful English translation of its Spanish field, line for line.
+
+Write PLAIN TEXT only — no markdown: no asterisks, no #, no >. Bullets may start with "- ".
+Never leave [bracketed] placeholders — invent concrete names."""
 
         response = self._generate(prompt, TaskPromptResponse, temperature=1.0)
-        task = TaskPromptResponse.model_validate_json(response.text)
-        return {"spanish": task.spanish, "english": task.english}
+        raw = TaskPromptResponse.model_validate_json(response.text).model_dump()
+        fields = {k: _plain("\n".join(v) if isinstance(v, list) else v) for k, v in raw.items()}
+        return {
+            **fields,
+            "spanish": _compose(fields["instructions"], fields["heading"], fields["content"]),
+            "english": _compose(fields["instructions_english"], fields["heading_english"], fields["content_english"]),
+        }
 
     def grade_essay(self, essay_text: str, task: dict = None, essay_type: str = "opinion") -> dict:
         """Grade a written essay against its task prompt. Returns scores, feedback and confidence."""

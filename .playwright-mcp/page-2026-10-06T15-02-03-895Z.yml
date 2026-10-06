@@ -1,0 +1,81 @@
+- generic [ref=f1e7]:
+  - link "Skip to main content" [ref=f1e8] [cursor=pointer]:
+    - /url: "#main"
+  - navigation "Main navigation" [ref=f1e9]:
+    - img "Texas A&M University" [ref=f1e11]
+    - generic [ref=f1e12]:
+      - text: Avanza Español
+      - generic [ref=f1e13]: Spanish for Texas Teachers
+    - generic [ref=f1e14]:
+      - generic [ref=f1e15]: Labels
+      - generic [ref=f1e16]:
+        - button "English" [pressed] [ref=f1e17] [cursor=pointer]
+        - button "Español" [ref=f1e18] [cursor=pointer]
+    - generic [ref=f1e20]:
+      - generic [ref=f1e21]: Dev Mode
+      - paragraph [ref=f1e22]: Dev User
+    - generic [ref=f1e23]:
+      - generic [ref=f1e24]: Proficiency Level
+      - combobox "Proficiency Level" [ref=f1e26] [cursor=pointer]:
+        - option "A1 - Beginner" [selected]
+        - option "A2 - Elementary"
+        - option "B1 - Intermediate"
+        - option "B2 - Upper Intermediate"
+    - button "Listening — Coming soon" [disabled] [ref=f1e28]
+    - generic [ref=f1e29]:
+      - button "Graded Speaking" [ref=f1e30] [cursor=pointer]
+      - button "Voice" [ref=f1e31] [cursor=pointer]
+    - button "Oral Tasks" [ref=f1e33] [cursor=pointer]
+    - button "Reading" [ref=f1e35] [cursor=pointer]
+    - generic [ref=f1e36]:
+      - button "Writing" [active] [ref=f1e37] [cursor=pointer]
+      - button "Opinion/Position Essay" [ref=f1e38] [cursor=pointer]
+      - button "Response to letters, memos, or emails" [ref=f1e39] [cursor=pointer]
+      - button "Lesson Plan" [ref=f1e40] [cursor=pointer]
+    - generic [ref=f1e41]:
+      - button "Chat" [ref=f1e42] [cursor=pointer]
+      - button "Cards" [ref=f1e43] [cursor=pointer]
+      - button "Grammar Quiz" [ref=f1e44] [cursor=pointer]
+      - button "Progress" [ref=f1e45] [cursor=pointer]
+  - main [ref=f1e46]:
+    - 'heading "Avanza Español: Writing" [level=1] [ref=f1e47]'
+    - generic [ref=f1e48]:
+      - generic [ref=f1e49]:
+        - generic [ref=f1e50]:
+          - paragraph [ref=f1e51]: Instructions
+          - paragraph [ref=f1e53]:
+            - generic [ref=f1e54]: ¿Crees que las escuelas deben prohibir las bebidas azucaradas en la cafetería? Sustenta tus ideas indicando un mínimo de dos ventajas y dos desventajas. (Tendrás aproximadamente 25 minutos para completar esta parte del examen de BTLPT.)
+        - generic [ref=f1e55]:
+          - paragraph [ref=f1e56]: Instructions
+          - paragraph [ref=f1e58]:
+            - generic [ref=f1e59]: Do you think schools should ban sugary drinks in the cafeteria? Support your ideas by indicating a minimum of two advantages and two disadvantages. (You will have approximately 25 minutes to complete this part of the BTLPT exam.)
+        - button "Hide English" [ref=f1e60] [cursor=pointer]
+        - generic [ref=f1e61]:
+          - generic [ref=f1e62]: Minimum 75 words. No upper limit.
+          - generic [ref=f1e63]: "Your time: 00:00"
+          - generic [ref=f1e64]:
+            - button "Write your own prompt" [ref=f1e65] [cursor=pointer]
+            - button "New prompt" [ref=f1e66] [cursor=pointer]
+      - generic [ref=f1e67]:
+        - button "Copy á" [ref=f1e68] [cursor=pointer]: á
+        - button "Copy é" [ref=f1e69] [cursor=pointer]: é
+        - button "Copy í" [ref=f1e70] [cursor=pointer]: í
+        - button "Copy ó" [ref=f1e71] [cursor=pointer]: ó
+        - button "Copy ú" [ref=f1e72] [cursor=pointer]: ú
+        - button "Copy ñ" [ref=f1e73] [cursor=pointer]: ñ
+        - button "Copy ü" [ref=f1e74] [cursor=pointer]: ü
+        - button "Copy ¿" [ref=f1e75] [cursor=pointer]: ¿
+        - button "Copy ¡" [ref=f1e76] [cursor=pointer]: ¡
+        - button "Copy Á" [ref=f1e77] [cursor=pointer]: Á
+        - button "Copy É" [ref=f1e78] [cursor=pointer]: É
+        - button "Copy Í" [ref=f1e79] [cursor=pointer]: Í
+        - button "Copy Ó" [ref=f1e80] [cursor=pointer]: Ó
+        - button "Copy Ú" [ref=f1e81] [cursor=pointer]: Ú
+        - button "Copy Ñ" [ref=f1e82] [cursor=pointer]: Ñ
+        - button "Copy Ü" [ref=f1e83] [cursor=pointer]: Ü
+        - status [ref=f1e84]
+      - textbox "Write your essay here..." [ref=f1e85]
+      - generic [ref=f1e86]:
+        - generic [ref=f1e87]: 0 words (75 minimum)
+        - button "Grade essay" [disabled] [ref=f1e88]
+      - status [ref=f1e89]

@@ -12,7 +12,17 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
 from . import grading_service as gs
-from .models import Submission
+from . import prompt_pool
+from .models import PromptPool, Submission
+
+
+def task_json(instructions='Pregunta nueva', instructions_english='New question', content='', **extra):
+    """Gemini returns multi-line fields as lists of lines; tests pass plain strings for brevity."""
+    lines = lambda v: v.split('\n') if v else []
+    return json.dumps({
+        'instructions': lines(instructions), 'instructions_english': lines(instructions_english),
+        'heading': '', 'heading_english': '', 'content': lines(content), 'content_english': [], **extra,
+    })
 
 
 TASK = {'spanish': '¿Debe prohibirse X en las escuelas?', 'english': 'Should X be banned in schools?'}
@@ -112,16 +122,35 @@ class PromptGenerationTests(TestCase):
         self.service = gs.AIGradingService()
         self.service.client = MagicMock()
 
-    def _generate_returning(self, spanish='Pregunta nueva', english='New question'):
+    def _generate_returning(self, **fields):
         return patch.object(
             self.service, '_generate',
-            return_value=SimpleNamespace(text=json.dumps({'spanish': spanish, 'english': english}))
+            return_value=SimpleNamespace(text=task_json(**fields))
         )
 
     def test_returns_spanish_and_english(self):
         with self._generate_returning():
             task = self.service.generate_task('essay', 'B1')
-        self.assertEqual(task, {'spanish': 'Pregunta nueva', 'english': 'New question'})
+        self.assertEqual(task['spanish'], 'Pregunta nueva')
+        self.assertEqual(task['english'], 'New question')
+
+    def test_instructions_come_before_the_labelled_material(self):
+        with self._generate_returning(instructions='Responde.', heading='Memorándum', content='A: Maestra'):
+            task = self.service.generate_task('essay', 'B1', 'correspondence')
+        self.assertEqual(task['spanish'], 'Responde.\n\nMemorándum\nA: Maestra')
+        self.assertEqual(task['heading'], 'Memorándum')
+
+    def test_markdown_is_stripped_from_every_field(self):
+        with self._generate_returning(instructions='**Escribe** una carta', content='# Asunto\n> **Hola**'):
+            task = self.service.generate_task('essay', 'B1')
+        self.assertEqual(task['instructions'], 'Escribe una carta')
+        self.assertEqual(task['content'], 'Asunto\nHola')
+        self.assertNotIn('*', task['spanish'])
+
+    def test_literal_backslash_n_becomes_a_line_break(self):
+        with self._generate_returning(content='De: Ana\\nPara: Maestra'):
+            task = self.service.generate_task('essay', 'B1', 'correspondence')
+        self.assertEqual(task['content'], 'De: Ana\nPara: Maestra')
 
     def test_essay_prompt_asks_for_advantages_and_disadvantages(self):
         with self._generate_returning() as gen:
@@ -312,18 +341,47 @@ class AudioGradingServiceTests(TestCase):
 
 class PromptEndpointTests(TestCase):
 
+    def setUp(self):
+        refill = patch('spanish.prompt_pool.refill_async')
+        self.refill = refill.start()
+        self.addCleanup(refill.stop)
+
     def test_passes_kind_and_level_through(self):
         task = {'spanish': 'pregunta', 'english': 'question'}
         with patch('spanish.grading_service.service.generate_task', return_value=task) as gen:
             res = self.client.post('/api/grade/prompt/', {'kind': 'audio', 'level': 'A2'})
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json(), task)
-        self.assertEqual(gen.call_args.args, ('audio', 'A2', 'opinion'))
+        self.assertEqual(gen.call_args.args, ('audio', 'A2', 'opinion', None))
 
     def test_defaults_to_an_essay_at_b1(self):
         with patch('spanish.grading_service.service.generate_task', return_value=TASK) as gen:
             self.client.post('/api/grade/prompt/', {})
         self.assertEqual(gen.call_args.args, ('essay', 'B1', 'opinion'))
+
+    def test_serves_and_removes_a_pooled_prompt(self):
+        PromptPool.objects.create(kind='essay', task_type='correspondence', level='B1', task=TASK)
+        with patch('spanish.grading_service.service.generate_task') as gen:
+            res = self.client.post('/api/grade/prompt/', {'kind': 'essay', 'essay_type': 'correspondence'})
+        self.assertEqual(res.json(), TASK)
+        gen.assert_not_called()
+        self.assertFalse(PromptPool.objects.exists())
+        self.refill.assert_called_once_with('essay', 'correspondence', 'B1')
+
+    def test_pool_is_keyed_by_oral_type_and_level(self):
+        PromptPool.objects.create(kind='audio', task_type='qa', level='A1', task=TASK)
+        with patch('spanish.grading_service.service.generate_task', return_value={'spanish': 'live'}):
+            other = self.client.post('/api/grade/prompt/', {'kind': 'audio', 'oral_type': 'situation', 'level': 'A1'})
+            pooled = self.client.post('/api/grade/prompt/', {'kind': 'audio', 'oral_type': 'qa', 'level': 'A1'})
+        self.assertEqual(other.json(), {'spanish': 'live'})
+        self.assertEqual(pooled.json(), TASK)
+
+    def test_refill_tops_the_pool_up_to_size(self):
+        PromptPool.objects.create(kind='essay', task_type='opinion', level='B1', task=TASK)
+        with patch('spanish.grading_service.service.generate_task', return_value=TASK) as gen:
+            prompt_pool.refill('essay', 'opinion', 'B1')
+        self.assertEqual(gen.call_count, prompt_pool.POOL_SIZE - 1)
+        self.assertEqual(PromptPool.objects.count(), prompt_pool.POOL_SIZE)
 
     def test_rejects_an_unknown_kind(self):
         res = self.client.post('/api/grade/prompt/', {'kind': 'video', 'level': 'A2'})
@@ -505,10 +563,12 @@ class EssayTypeTests(TestCase):
     def test_generated_task_follows_the_selected_type(self):
         with patch.object(
             self.service, '_generate',
-            return_value=SimpleNamespace(text=json.dumps({'spanish': 'a', 'english': 'b'}))
+            return_value=SimpleNamespace(text=task_json())
         ) as gen:
             self.service.generate_task('essay', 'B1', 'correspondence')
-        self.assertIn('letter, memo or email', gen.call_args.args[0])
+        instruction = gen.call_args.args[0]
+        for marker in ('parent', 'principal', 'PTO president', 'invent a realistic full name', 'Asunto'):
+            self.assertIn(marker, instruction)
 
     def test_feedback_is_requested_per_dimension_with_the_reason_last(self):
         for prompt in (self._prompt('opinion'), self.service._build_audio_prompt(TASK)):

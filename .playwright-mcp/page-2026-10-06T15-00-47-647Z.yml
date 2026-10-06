@@ -1,0 +1,81 @@
+- generic [ref=e7]:
+  - link "Skip to main content" [ref=e8] [cursor=pointer]:
+    - /url: "#main"
+  - navigation "Main navigation" [ref=e9]:
+    - img "Texas A&M University" [ref=e11]
+    - generic [ref=e12]:
+      - text: Avanza Español
+      - generic [ref=e13]: Spanish for Texas Teachers
+    - generic [ref=e14]:
+      - generic [ref=e15]: Labels
+      - generic [ref=e16]:
+        - button "English" [pressed] [ref=e17] [cursor=pointer]
+        - button "Español" [ref=e18] [cursor=pointer]
+    - generic [ref=e20]:
+      - generic [ref=e21]: Dev Mode
+      - paragraph [ref=e22]: Dev User
+    - generic [ref=e23]:
+      - generic [ref=e24]: Proficiency Level
+      - combobox "Proficiency Level" [ref=e26] [cursor=pointer]:
+        - option "A1 - Beginner" [selected]
+        - option "A2 - Elementary"
+        - option "B1 - Intermediate"
+        - option "B2 - Upper Intermediate"
+    - button "Listening — Coming soon" [disabled] [ref=e28]
+    - generic [ref=e29]:
+      - button "Graded Speaking" [ref=e30] [cursor=pointer]
+      - button "Voice" [ref=e31] [cursor=pointer]
+    - button "Oral Tasks" [ref=e33] [cursor=pointer]
+    - button "Reading" [ref=e35] [cursor=pointer]
+    - generic [ref=e36]:
+      - button "Writing" [active] [ref=e37] [cursor=pointer]
+      - button "Opinion/Position Essay" [ref=e69] [cursor=pointer]
+      - button "Response to letters, memos, or emails" [ref=e70] [cursor=pointer]
+      - button "Lesson Plan" [ref=e71] [cursor=pointer]
+    - generic [ref=e38]:
+      - button "Chat" [ref=e39] [cursor=pointer]
+      - button "Cards" [ref=e40] [cursor=pointer]
+      - button "Grammar Quiz" [ref=e41] [cursor=pointer]
+      - button "Progress" [ref=e42] [cursor=pointer]
+  - main [ref=e43]:
+    - 'heading "Avanza Español: Writing" [level=1] [ref=e72]'
+    - generic [ref=e73]:
+      - generic [ref=e74]:
+        - generic [ref=e75]:
+          - paragraph [ref=e76]: Instructions
+          - paragraph [ref=e78]:
+            - generic [ref=e79]: ¿Crees que los parques de la comunidad deben cerrar al atardecer? Sustenta tus ideas indicando un mínimo de dos ventajas y dos desventajas. (Tendrás aproximadamente 25 minutos para completar esta parte del examen de BTLPT.)
+        - generic [ref=e80]:
+          - paragraph [ref=e81]: Instructions
+          - paragraph [ref=e83]:
+            - generic [ref=e84]: Do you think community parks should close at sunset? Support your ideas by indicating a minimum of two advantages and two disadvantages. (You will have approximately 25 minutes to complete this part of the BTLPT exam.)
+        - button "Hide English" [ref=e85] [cursor=pointer]
+        - generic [ref=e86]:
+          - generic [ref=e87]: Minimum 75 words. No upper limit.
+          - generic [ref=e88]: "Your time: 00:00"
+          - generic [ref=e89]:
+            - button "Write your own prompt" [ref=e90] [cursor=pointer]
+            - button "New prompt" [ref=e91] [cursor=pointer]
+      - generic [ref=e92]:
+        - button "Copy á" [ref=e93] [cursor=pointer]: á
+        - button "Copy é" [ref=e94] [cursor=pointer]: é
+        - button "Copy í" [ref=e95] [cursor=pointer]: í
+        - button "Copy ó" [ref=e96] [cursor=pointer]: ó
+        - button "Copy ú" [ref=e97] [cursor=pointer]: ú
+        - button "Copy ñ" [ref=e98] [cursor=pointer]: ñ
+        - button "Copy ü" [ref=e99] [cursor=pointer]: ü
+        - button "Copy ¿" [ref=e100] [cursor=pointer]: ¿
+        - button "Copy ¡" [ref=e101] [cursor=pointer]: ¡
+        - button "Copy Á" [ref=e102] [cursor=pointer]: Á
+        - button "Copy É" [ref=e103] [cursor=pointer]: É
+        - button "Copy Í" [ref=e104] [cursor=pointer]: Í
+        - button "Copy Ó" [ref=e105] [cursor=pointer]: Ó
+        - button "Copy Ú" [ref=e106] [cursor=pointer]: Ú
+        - button "Copy Ñ" [ref=e107] [cursor=pointer]: Ñ
+        - button "Copy Ü" [ref=e108] [cursor=pointer]: Ü
+        - status [ref=e109]
+      - textbox "Write your essay here..." [ref=e110]
+      - generic [ref=e111]:
+        - generic [ref=e112]: 0 words (75 minimum)
+        - button "Grade essay" [disabled] [ref=e113]
+      - status [ref=e114]

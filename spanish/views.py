@@ -9,7 +9,7 @@ from django.conf import settings
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from . import gemini_service, grading_service
+from . import gemini_service, grading_service, prompt_pool
 from .models import UserProgress, FlashCard, Submission
 
 
@@ -334,9 +334,12 @@ def grade_prompt_view(request):
         return Response({'error': 'kind must be essay or audio'}, status=status.HTTP_400_BAD_REQUEST)
     try:
         level = request.data.get('level', 'B1')
-        essay_type = _essay_type(request)
-        oral_type = request.data.get('oral_type') or None
-        return Response(call_with_retry(lambda: grading_service.service.generate_task(kind, level, essay_type, oral_type)))
+        if level not in prompt_pool.LEVELS:
+            level = 'B1'
+        oral_type = request.data.get('oral_type') or ''
+        # only known types become pool keys, so clients can't mint arbitrary pools
+        task_type = _essay_type(request) if kind == 'essay' else (oral_type if oral_type in grading_service.ORAL_TYPE_SHAPES else '')
+        return Response(call_with_retry(lambda: prompt_pool.take(kind, task_type, level)))
     except Exception as e:
         print(f"Prompt generation error: {e}")
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

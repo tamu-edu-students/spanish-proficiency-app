@@ -30,8 +30,18 @@ function useTask(kind, level, essayType, oralType) {
     try {
       const res = await axios.post(`${API}/grade/prompt/`, { kind, level, essay_type: essayType, oral_type: oralType })
       const data = res.data
+      // The exam note belongs with the instructions (shown first), and on the
+      // spanish/english text too, since that's what the rater grades against.
       setTask(kind === 'essay'
-        ? { spanish: withExamNote(data.spanish, EXAM_NOTE_ES), english: withExamNote(data.english, EXAM_NOTE_EN) }
+        ? {
+            ...data,
+            spanish: withExamNote(data.spanish, EXAM_NOTE_ES),
+            english: withExamNote(data.english, EXAM_NOTE_EN),
+            ...(data.instructions && {
+              instructions: withExamNote(data.instructions, EXAM_NOTE_ES),
+              instructions_english: withExamNote(data.instructions_english, EXAM_NOTE_EN),
+            }),
+          }
         : data)
     } catch {
       setTask({ spanish: 'No se pudo generar una pregunta. Inténtalo de nuevo.', english: '' })
@@ -156,7 +166,8 @@ function Feedback({ text, scores }) {
 function renderMarkdownInline(text) {
   return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) => {
     const bold = part.match(/^\*\*([^*]+)\*\*$/)
-    return bold ? <strong key={i}>{bold[1]}</strong> : <span key={i}>{part}</span>
+    // unmatched ** (bold split across lines) would otherwise show literally
+    return bold ? <strong key={i}>{bold[1]}</strong> : <span key={i}>{part.replace(/\*\*/g, '')}</span>
   })
 }
 
@@ -172,7 +183,7 @@ function parseMarkdownLite(text) {
     paraLines = []
   }
   for (const raw of text.split('\n')) {
-    const line = raw.trim()
+    const line = raw.trim().replace(/^(#+|>)\s*/, '')   // markdown headings/quotes: show as plain text
     if (!line) { flushPara(); continue }
     const bullet = line.match(/^[-*•]\s+(.*)/)
     const numbered = line.match(/^\d+\.\s+(.*)/)
@@ -364,6 +375,35 @@ function AccentBar({ t }) {
   )
 }
 
+// Instructions first, then the material (letter, scenario, topic) in its own
+// card under a heading that says what it is. Prompts without the structured
+// fields (teacher-written, older history, offline fallbacks) render as one block.
+function TaskBody({ task, english, t, style }) {
+  const f = english
+    ? { instructions: task.instructions_english, heading: task.heading_english, content: task.content_english, text: task.english }
+    : { instructions: task.instructions, heading: task.heading, content: task.content, text: task.spanish }
+  const lang = english ? 'en' : 'es'
+  if (!f.instructions) return <MarkdownLite lang={lang} text={f.text} style={style} />
+  return (
+    <div lang={lang} style={style}>
+      <p style={{ fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '13px', margin: '0 0 4px' }}>
+        {t.instructions}
+      </p>
+      <MarkdownLite text={f.instructions} />
+      {f.content && (
+        <div style={{ background: '#fff', border: '1px solid #e0d0d0', padding: '12px 14px', marginTop: '6px' }}>
+          {f.heading && (
+            <h3 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 8px', paddingBottom: '6px', borderBottom: '1px solid #f0e8e8' }}>
+              {f.heading}
+            </h3>
+          )}
+          <MarkdownLite text={f.content} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 // A1/A2 students can toggle the English translation of the question on or off;
 // B1/B2 never see it — the task prompt itself stays 100% Spanish at that level.
 const ENGLISH_TOGGLE_LEVELS = ['A1', 'A2']
@@ -429,10 +469,10 @@ function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendEx
         <p role="status" style={{ color: '#666' }}>{t.generatingPrompt}</p>
       ) : (
         <>
-          <MarkdownLite lang="es" text={task.spanish} style={{ color: MAROON }} />
+          <TaskBody task={task} t={t} style={{ color: MAROON }} />
           {task.english && allowEnglishToggle && (
             <>
-              {showEnglish && <MarkdownLite lang="en" text={task.english} style={{ color: '#666', fontSize: '15px', marginTop: '6px' }} />}
+              {showEnglish && <TaskBody task={task} english t={t} style={{ color: '#666', fontSize: '15px', marginTop: '6px' }} />}
               <button onClick={() => setShowEnglish(s => !s)} style={{ ...linkBtn(), marginTop: '6px' }}>
                 {showEnglish ? t.hideTranslation : t.showTranslation}
               </button>
@@ -636,12 +676,16 @@ function AudioTab({ sessionId, level, onGraded, lang, oralType }) {
   // student keeps talking through both questions and is graded once at the end.
   const [qaStage, setQaStage] = useState(1)
   useEffect(() => { setQaStage(1) }, [task])
-  const qaSpanish = oralType === 'qa' ? splitQA(task?.spanish) : null
-  const qaEnglish = oralType === 'qa' ? splitQA(task?.english) : null
+  // Structured prompts split only the content, so the instructions stay on top in both stages.
+  const qaField = task?.instructions ? 'content' : 'spanish'
+  const qaFieldEn = task?.instructions ? 'content_english' : 'english'
+  const qaSpanish = oralType === 'qa' ? splitQA(task?.[qaField]) : null
+  const qaEnglish = oralType === 'qa' ? splitQA(task?.[qaFieldEn]) : null
   const displayTask = qaSpanish
     ? {
-        spanish: qaStage === 1 ? qaSpanish.stage1 : qaSpanish.stage2,
-        english: qaEnglish ? (qaStage === 1 ? qaEnglish.stage1 : qaEnglish.stage2) : task.english,
+        ...task,
+        [qaField]: qaStage === 1 ? qaSpanish.stage1 : qaSpanish.stage2,
+        [qaFieldEn]: qaEnglish ? (qaStage === 1 ? qaEnglish.stage1 : qaEnglish.stage2) : task[qaFieldEn],
       }
     : task
 
