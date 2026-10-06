@@ -4,14 +4,14 @@ steps:
     args:
       - 'build'
       - '-t'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/spanish-app/spanish-app:$COMMIT_SHA'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/spanish-app/spanish-app:$BUILD_ID'
       - '.'
 
   # 2. Push the image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/spanish-app/spanish-app:$COMMIT_SHA'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/spanish-app/spanish-app:$BUILD_ID'
 
   # 3. Deploy the image to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -21,7 +21,7 @@ steps:
       - 'deploy'
       - 'spanish-app'
       - '--image'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/spanish-app/spanish-app:$COMMIT_SHA'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/spanish-app/spanish-app:$BUILD_ID'
       - '--region'
       - 'us-central1'
       - '--service-account'
@@ -34,4 +34,4 @@ steps:
       - 'SECRET_KEY=django-secret-key:latest,GEMINI_API_KEY=gemini-api-key:latest,DATABASE_URL=database-url:latest'
 
 images:
-  - 'us-central1-docker.pkg.dev/$PROJECT_ID/spanish-app/spanish-app:$COMMIT_SHA'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/spanish-app/spanish-app:$BUILD_ID'
