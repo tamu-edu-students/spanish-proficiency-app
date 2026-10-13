@@ -60,6 +60,8 @@ const WRITING_TYPE_LABEL_KEY = {
   correspondence: 'taskTypeLetter',
   lesson_plan:    'taskTypeLessonPlan',
 }
+// Letters/memos is an upper-level task — hidden below B2.
+const writingTypesFor = level => level === 'B2' ? WRITING_TYPES : WRITING_TYPES.filter(t => t !== 'correspondence')
 
 // Oral Expression's BTLPT task types (Domain II), nested under the Oral tab,
 // each mapped to its sidebar label key in i18n.js. Q&A 1 and Q&A 2 share one
@@ -119,6 +121,8 @@ function App() {
   const [labelLanguage, setLabelLanguage] = useState('en')
 
   const levelLocked = activeTab === 'voice'
+  const writingTypes = writingTypesFor(userLevel)
+  const shownEssayType = writingTypes.includes(essayType) ? essayType : 'opinion'
   const tabLabels = TAB_LABELS[labelLanguage] || TAB_LABELS.en
   const t = strings(labelLanguage)
 
@@ -342,11 +346,11 @@ function App() {
                 >
                   {tabLabels[tabKey]}
                 </button>
-                {tabKey === 'writing' && activeTab === 'writing' && WRITING_TYPES.map(type => (
+                {tabKey === 'writing' && activeTab === 'writing' && writingTypes.map(type => (
                   <button
                     key={type}
-                    className={`tab-btn tab-subitem ${essayType === type ? 'active' : ''}`}
-                    aria-current={essayType === type ? 'true' : undefined}
+                    className={`tab-btn tab-subitem ${shownEssayType === type ? 'active' : ''}`}
+                    aria-current={shownEssayType === type ? 'true' : undefined}
                     onClick={() => setEssayType(type)}
                   >
                     {t[WRITING_TYPE_LABEL_KEY[type]]}
@@ -379,7 +383,7 @@ function App() {
         {/* key={essayType}/{oralType} forces a full remount on subsection switch — otherwise
             the same EssayTab/AudioTab instance stays mounted and carries over its draft
             text/recording from the previous task type. */}
-        {activeTab === 'writing'   && <GradingScreen   key={essayType} kind="essay" essayType={essayType} level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
+        {activeTab === 'writing'   && <GradingScreen   key={shownEssayType} kind="essay" essayType={shownEssayType} level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
         {activeTab === 'speaking'  && <GradingScreen   kind="audio" level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
         {activeTab === 'oral'      && <GradingScreen   key={oralType} kind="audio" oralType={oralType} level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
         {activeTab === 'progress'  && <ProgressScreen  level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}

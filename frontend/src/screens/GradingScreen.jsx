@@ -483,12 +483,18 @@ function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendEx
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', gap: '12px', flexWrap: 'wrap' }}>
         <span style={{ color: '#666', fontSize: '14px' }}>{note}</span>
         {timerLabel && <span style={{ color: MAROON, fontSize: '14px', fontWeight: 600 }}>{timerLabel}</span>}
-        <div style={{ display: 'flex', gap: '14px' }}>
+        <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
           <button onClick={open} style={linkBtn()}>{t.ownPrompt}</button>
           {custom ? (
             <button onClick={() => setCustom(null)} style={linkBtn()}>{t.backToGenerated}</button>
           ) : (
-            <button onClick={onNew} disabled={loading} style={linkBtn(!loading)}>{t.newPrompt}</button>
+            <button
+              onClick={onNew}
+              disabled={loading}
+              style={{ ...outlineBtn, padding: '12px 28px', fontSize: '16px', background: loading ? '#ccc' : MAROON, borderColor: loading ? '#ccc' : MAROON, color: '#fff', cursor: loading ? 'not-allowed' : 'pointer' }}
+            >
+              {t.newPrompt}
+            </button>
           )}
         </div>
       </div>
@@ -701,6 +707,10 @@ function AudioTab({ sessionId, level, onGraded, lang, oralType }) {
 
   useEffect(() => () => clearInterval(timerRef.current), [])
 
+  // Hard cutoff matching the rater's max response time (grading_service.py).
+  const maxSeconds = oralType === 'qa' ? 180 : 120
+  useEffect(() => { if (recording && seconds >= maxSeconds) stopRecording() }, [recording, seconds, maxSeconds])
+
   async function startRecording() {
     setError(''); setResult(null); setBlob(null)
     try {
@@ -763,7 +773,7 @@ function AudioTab({ sessionId, level, onGraded, lang, oralType }) {
           onClick={recording ? stopRecording : startRecording}
           style={{ padding: '10px 20px', background: recording ? '#b00' : MAROON, color: '#fff', border: 'none', fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer' }}
         >
-          {recording ? `${t.stop} (${seconds}s)` : t.record}
+          {recording ? `${t.stop} (${formatTime(maxSeconds - seconds)})` : `${t.record} (${formatTime(maxSeconds)})`}
         </button>
 
         <label style={{ fontSize: '15px', color: '#666', cursor: 'pointer' }}>
@@ -814,7 +824,7 @@ function GradingScreen({ kind, sessionId, level, lang, essayType = 'opinion', or
   useEffect(() => { loadHistory() }, [loadHistory])
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', padding: '16px' }}>
+    <div style={{ padding: '16px' }}>
 
       {kind === 'essay'
         ? <EssayTab sessionId={sessionId} level={level} onGraded={loadHistory} lang={lang} essayType={essayType} />

@@ -298,12 +298,12 @@ class AudioGradingServiceTests(TestCase):
             self.gen = gen
             return self.service.grade_audio(path, task)
 
-    def test_transcription_and_five_dimensions_are_returned(self):
+    def test_transcription_and_three_dimensions_are_returned(self):
         result = self.grade()
         self.assertEqual(result['transcription'], 'Hola, me llamo Ana.')
         self.assertEqual(result['transcription_english'], 'Hello, my name is Ana.')
         self.assertEqual(sorted(result['scores']),
-                         ['coherency', 'fluency', 'language_use', 'task_completion', 'topic_development'])
+                         ['language_use', 'task_completion', 'topic_development'])
 
     def test_weak_language_use_caps_the_other_dimensions(self):
         result = self.grade(text=audio_json(score_language_use=1))
@@ -570,6 +570,16 @@ class EssayTypeTests(TestCase):
         for marker in ('parent', 'principal', 'PTO president', 'invent a realistic full name', 'Asunto'):
             self.assertIn(marker, instruction)
 
+    def test_lesson_plan_task_is_teks_aligned_and_k_to_5(self):
+        with patch.object(
+            self.service, '_generate',
+            return_value=SimpleNamespace(text=task_json())
+        ) as gen:
+            self.service.generate_task('essay', 'B1', 'lesson_plan')
+        instruction = gen.call_args.args[0]
+        for marker in ('TEKS', 'Kindergarten through Grade 5', '§128.7', '§113.16'):
+            self.assertIn(marker, instruction)
+
     def test_feedback_is_requested_per_dimension_with_the_reason_last(self):
         for prompt in (self._prompt('opinion'), self.service._build_audio_prompt(TASK)):
             self.assertIn('Task Completion:', prompt)
@@ -577,7 +587,9 @@ class EssayTypeTests(TestCase):
             self.assertIn("LAST bullet", prompt)
             self.assertIn("rater's reason", prompt)
 
-    def test_audio_feedback_covers_all_five_dimensions(self):
+    def test_audio_feedback_covers_the_three_btlpt_dimensions(self):
         prompt = self.service._build_audio_prompt(TASK)
-        for heading in ('Task Completion:', 'Topic Development:', 'Language Use:', 'Fluency:', 'Coherency:'):
+        for heading in ('Task Completion:', 'Topic Development:', 'Language Use:'):
             self.assertIn(heading, prompt)
+        for heading in ('Fluency:', 'Coherency:'):
+            self.assertNotIn(heading, prompt)
