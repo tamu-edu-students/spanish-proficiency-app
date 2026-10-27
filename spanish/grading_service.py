@@ -2,6 +2,7 @@
 
 Ported from the spanish-grading-app FastAPI service; prompts kept verbatim.
 """
+import random
 import re
 from pathlib import Path
 from pydantic import BaseModel
@@ -365,6 +366,16 @@ ESSAY_TYPE_RULES = {
                       sequencing language is missing from the procedures.""",
 }
 
+# Gemini left to "pick one" always picks email, so the code picks.
+CORRESPONDENCE_FORMATS = [
+    {"format": "an email — start content with lines 'De:', 'Para:', 'Asunto:'",
+     "heading_example": "Correo electrónico de la Sra. Lucía Morales (madre de familia)"},
+    {"format": "a memo — start content with lines 'A:', 'De:', 'Fecha:', 'Asunto:'",
+     "heading_example": "Memorándum del Sr. Andrés Rivera (director)"},
+    {"format": "a letter — start content with a date line and a greeting, no De:/Para: headers",
+     "heading_example": "Carta de la Sra. Lucía Morales (madre de familia)"},
+]
+
 ESSAY_TYPE_SHAPES = {
     "opinion": (
         "an opinion question about a school, community or everyday policy — phrased so the "
@@ -377,11 +388,9 @@ ESSAY_TYPE_SHAPES = {
         "Texas elementary school (make up the school name); address the teacher by role and grade "
         "(e.g. 'Maestra de tercer grado'), never by a placeholder. The message is FROM a parent, the "
         "principal, or the PTO president — invent a realistic full name for the sender (Hispanic "
-        "names are fine) and sign the message with that name and role. Pick ONE format: email "
-        "(start content with lines 'De:', 'Para:', 'Asunto:'), memo (lines 'A:', 'De:', 'Fecha:', "
-        "'Asunto:') or letter (date, greeting). The message must ask two or three specific "
-        "questions or requests. heading names the format and the sender, e.g. 'Correo "
-        "electrónico de la Sra. Lucía Morales (madre de familia)'. content is the full message. "
+        "names are fine) and sign the message with that name and role. Format: {format}. The message "
+        "must ask two or three specific questions or requests. heading names the format and the "
+        "sender, e.g. '{heading_example}'. content is the full message. "
         "instructions tell the student to write a reply in Spanish with an appropriate greeting, "
         "answers to every point raised, and a closing."
     ),
@@ -955,6 +964,8 @@ Respond using the exact fields requested.
 
         if kind == "essay":
             shape = ESSAY_TYPE_SHAPES.get(essay_type, ESSAY_TYPE_SHAPES["opinion"])
+            if essay_type == "correspondence":
+                shape = shape.format(**random.choice(CORRESPONDENCE_FORMATS))
             example = DEFAULT_ESSAY_TASK["spanish"]
         elif oral_type in ORAL_TYPE_SHAPES:
             shape = ORAL_TYPE_SHAPES[oral_type]

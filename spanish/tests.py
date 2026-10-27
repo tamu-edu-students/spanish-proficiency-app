@@ -567,8 +567,18 @@ class EssayTypeTests(TestCase):
         ) as gen:
             self.service.generate_task('essay', 'B1', 'correspondence')
         instruction = gen.call_args.args[0]
-        for marker in ('parent', 'principal', 'PTO president', 'invent a realistic full name', 'Asunto'):
+        for marker in ('parent', 'principal', 'PTO president', 'invent a realistic full name'):
             self.assertIn(marker, instruction)
+
+    def test_correspondence_format_is_chosen_by_code_not_the_model(self):
+        for fmt, marker in zip(gs.CORRESPONDENCE_FORMATS, ('an email', 'a memo', 'a letter')):
+            with patch.object(gs.random, 'choice', return_value=fmt), patch.object(
+                self.service, '_generate', return_value=SimpleNamespace(text=task_json())
+            ) as gen:
+                self.service.generate_task('essay', 'B1', 'correspondence')
+            instruction = gen.call_args.args[0]
+            self.assertIn(f'Format: {marker}', instruction)
+            self.assertNotIn('{', instruction.split('Level B1 guidance')[0])
 
     def test_lesson_plan_task_is_teks_aligned_and_k_to_5(self):
         with patch.object(
