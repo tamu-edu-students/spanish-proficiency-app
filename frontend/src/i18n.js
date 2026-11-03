@@ -17,7 +17,7 @@ const STRINGS = {
     pickCharacter:    'Pick',
     insertCharacter:  'Insert',
     inserted:         'Inserted',
-    accentHelp:       'To add a special character: click in your answer where you want it, click the character above, then press Insert. You can also double-click a character to copy it, then paste it with Ctrl+V (⌘+V on Mac).',
+    accentHelp:       'To add a special character: place your cursor where you want the character, then click the character above, then press Insert. You can also double-click a character to copy it, then paste it with Ctrl+V (⌘+V on Mac).',
     correctAnswer:    '(correct answer)',
     yourAnswer:       '(your answer)',
     sendMessage:      'Send message',
