@@ -80,11 +80,9 @@ def chat_view(request):
             return Response({'error': 'No messages provided'}, status=status.HTTP_400_BAD_REQUEST)
 
         if is_voice:
-            reply = call_with_retry(lambda: gemini_service.voice_chat(messages, level))
-        else:
-            reply = call_with_retry(lambda: gemini_service.chat(messages, level, topic))
-
-        return Response({'reply': reply})
+            return Response({'reply': call_with_retry(lambda: gemini_service.voice_chat(messages, level))})
+        # {'reply', 'correction'} — correction is "" when the student's message was already correct
+        return Response(call_with_retry(lambda: gemini_service.chat(messages, level, topic)))
 
     except Exception as e:
         print(f"Chat error: {e}")

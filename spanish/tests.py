@@ -329,6 +329,22 @@ class AudioGradingServiceTests(TestCase):
                 self.service.grade_audio('/tmp/clip.webm', TASK)
         self.service.client.files.delete.assert_called_once_with(name='files/abc')
 
+    def test_feedback_missing_sections_is_regenerated(self):
+        partial = audio_json(feedback='Task Completion:\n- ok', feedback_spanish='Cumplimiento de la tarea:\n- bien')
+        full = audio_json(
+            feedback='Task Completion:\n- a\nTopic Development:\n- b\nLanguage Use:\n- c',
+            feedback_spanish='Cumplimiento de la tarea:\n- a\nDesarrollo del tema:\n- b\nUso del lenguaje:\n- c',
+        )
+        with patch.object(self.service, '_generate', side_effect=[SimpleNamespace(text=partial), SimpleNamespace(text=full)]) as gen:
+            result = self.service.grade_audio('/tmp/clip.webm', TASK)
+        self.assertEqual(gen.call_count, 2)
+        self.assertIn('Language Use:', result['feedback'])
+
+    def test_incomplete_feedback_still_returns_after_max_attempts(self):
+        result = self.grade()   # fixture feedback has no section headings at all
+        self.assertEqual(self.gen.call_count, gs.FEEDBACK_ATTEMPTS)
+        self.assertEqual(result['feedback'], 'Nice.')
+
     def test_no_api_key_raises_before_uploading(self):
         self.service.client = None
         with self.assertRaisesMessage(ValueError, 'Gemini API key not configured'):
@@ -569,6 +585,25 @@ class EssayTypeTests(TestCase):
         instruction = gen.call_args.args[0]
         for marker in ('parent', 'principal', 'PTO president', 'invent a realistic full name'):
             self.assertIn(marker, instruction)
+
+    def test_correspondence_greeting_uses_a_colon(self):
+        with patch.object(
+            self.service, '_generate',
+            return_value=SimpleNamespace(text=task_json())
+        ) as gen:
+            self.service.generate_task('essay', 'B1', 'correspondence')
+        instruction = gen.call_args.args[0]
+        self.assertIn('COLON, never a comma', instruction)
+        self.assertIn('Estimada Sra. Morales:', instruction)
+
+    def test_correspondence_content_gets_letter_spacing(self):
+        memo = ('A: Maestra de quinto grado\nDe: Elena Flores\nAsunto: Jardín\nEstimada maestra:\n'
+                'Primer párrafo.\nSegundo párrafo.\nAtentamente,\nElena Flores\nPresidenta de la APT')
+        with patch.object(self.service, '_generate', return_value=SimpleNamespace(text=task_json(content=memo))):
+            task = self.service.generate_task('essay', 'B1', 'correspondence')
+        self.assertEqual(task['content'], (
+            'A: Maestra de quinto grado\nDe: Elena Flores\nAsunto: Jardín\n\nEstimada maestra:\n\n'
+            'Primer párrafo.\n\nSegundo párrafo.\n\nAtentamente,\nElena Flores\nPresidenta de la APT'))
 
     def test_correspondence_format_is_chosen_by_code_not_the_model(self):
         for fmt, marker in zip(gs.CORRESPONDENCE_FORMATS, ('an email', 'a memo', 'a letter')):

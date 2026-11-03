@@ -11,6 +11,11 @@ const MAROON = '#500000'
 const EXAM_NOTE_ES = ' (Tendrás aproximadamente 25 minutos para completar esta parte del examen de BTLPT.)'
 const EXAM_NOTE_EN = ' (You will have approximately 25 minutes to complete this part of the BTLPT exam.)'
 
+// Same idea for every speaking task (Graded Speaking + Oral Tasks): its own line
+// at the end of the instructions.
+const NOTES_TIP_ES = '\nAntes de grabar, toma notas breves para organizar tus ideas.'
+const NOTES_TIP_EN = '\nBefore recording, take brief notes to organize your thoughts.'
+
 function withExamNote(text, note) {
   if (!text) return text
   return text.endsWith(note) ? text : text + note
@@ -30,19 +35,19 @@ function useTask(kind, level, essayType, oralType) {
     try {
       const res = await axios.post(`${API}/grade/prompt/`, { kind, level, essay_type: essayType, oral_type: oralType })
       const data = res.data
-      // The exam note belongs with the instructions (shown first), and on the
-      // spanish/english text too, since that's what the rater grades against.
-      setTask(kind === 'essay'
-        ? {
-            ...data,
-            spanish: withExamNote(data.spanish, EXAM_NOTE_ES),
-            english: withExamNote(data.english, EXAM_NOTE_EN),
-            ...(data.instructions && {
-              instructions: withExamNote(data.instructions, EXAM_NOTE_ES),
-              instructions_english: withExamNote(data.instructions_english, EXAM_NOTE_EN),
-            }),
-          }
-        : data)
+      // The exam note (essay) / note-taking tip (audio) belongs with the instructions
+      // (shown first), and on the spanish/english text too, since that's what the
+      // rater grades against.
+      const [es, en] = kind === 'essay' ? [EXAM_NOTE_ES, EXAM_NOTE_EN] : [NOTES_TIP_ES, NOTES_TIP_EN]
+      setTask({
+        ...data,
+        spanish: withExamNote(data.spanish, es),
+        english: withExamNote(data.english, en),
+        ...(data.instructions && {
+          instructions: withExamNote(data.instructions, es),
+          instructions_english: withExamNote(data.instructions_english, en),
+        }),
+      })
     } catch {
       setTask({ spanish: 'No se pudo generar una pregunta. Inténtalo de nuevo.', english: '' })
     } finally {
@@ -350,27 +355,65 @@ const linkBtn = (enabled = true) => ({
 
 const SPECIAL_CHARS = ['á','é','í','ó','ú','ñ','ü','¿','¡','Á','É','Í','Ó','Ú','Ñ','Ü']
 
-// Buttons (not select-to-copy spans) so keyboard and screen-reader users can use them too.
-function AccentBar({ t }) {
-  const [copied, setCopied] = useState('')
-  function copy(ch) {
-    navigator.clipboard?.writeText(ch).then(() => setCopied(ch)).catch(() => {})
+// Characters are selectable text (not <button>s, whose text can't be highlighted),
+// so drag-select + Ctrl+C works and double-click highlights and copies one. A single
+// click picks a character; Insert puts it at the cursor in `targetRef`'s textarea.
+// role="button" + tabIndex + Enter/Space keep it usable from the keyboard.
+function AccentBar({ t, targetRef, onInsert }) {
+  const [picked, setPicked] = useState('')
+  const [status, setStatus] = useState('')
+
+  function copy(e, ch) {
+    window.getSelection()?.selectAllChildren(e.currentTarget)
+    navigator.clipboard?.writeText(ch).then(() => setStatus(`${t.copied} ${ch}`)).catch(() => {})
   }
+
+  function insert() {
+    const el = targetRef?.current
+    if (!el || !picked) return
+    const ch = picked
+    const start = el.selectionStart ?? el.value.length
+    const end = el.selectionEnd ?? start
+    onInsert(el.value.slice(0, start) + ch + el.value.slice(end))
+    setPicked('')
+    setStatus(`${t.inserted} ${ch}`)
+    // after React writes the new value, put the cursor right after the inserted character
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(start + ch.length, start + ch.length) })
+  }
+
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', margin: '12px 0 4px' }}>
-      {SPECIAL_CHARS.map(ch => (
+    <div style={{ margin: '12px 0 4px' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+        {SPECIAL_CHARS.map(ch => {
+          const on = picked === ch
+          return (
+            <span
+              key={ch}
+              lang="es"
+              role="button"
+              tabIndex={0}
+              aria-pressed={on}
+              aria-label={`${t.pickCharacter} ${ch}`}
+              onClick={() => setPicked(ch)}
+              onDoubleClick={e => copy(e, ch)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPicked(ch) } }}
+              style={{ cursor: 'pointer', userSelect: 'text', display: 'inline-block', minWidth: '30px', minHeight: '30px', textAlign: 'center', padding: '4px 6px', background: on ? MAROON : '#faf8f8', border: `1px solid ${on ? MAROON : '#c8a0a0'}`, color: on ? '#fff' : MAROON, fontSize: '17px', lineHeight: 1.2, boxSizing: 'border-box' }}
+            >
+              {ch}
+            </span>
+          )
+        })}
         <button
           type="button"
-          key={ch}
-          lang="es"
-          aria-label={`${t.copyCharacter} ${ch}`}
-          onClick={() => copy(ch)}
-          style={{ cursor: 'pointer', minWidth: '30px', minHeight: '30px', textAlign: 'center', padding: '4px 6px', background: '#faf8f8', border: '1px solid #c8a0a0', color: MAROON, fontSize: '17px', lineHeight: 1.2 }}
+          onClick={insert}
+          disabled={!picked}
+          style={{ marginLeft: '6px', minHeight: '30px', padding: '4px 14px', background: picked ? MAROON : '#ccc', color: '#fff', border: 'none', fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '13px', cursor: picked ? 'pointer' : 'not-allowed' }}
         >
-          {ch}
+          {t.insertCharacter}{picked && ` ${picked}`}
         </button>
-      ))}
-      <span role="status" className="sr-only">{copied && `${t.copied} ${copied}`}</span>
+      </div>
+      <p style={{ color: '#666', fontSize: '13px', margin: '6px 0 0', lineHeight: 1.5 }}>{t.accentHelp}</p>
+      <span role="status" className="sr-only">{status}</span>
     </div>
   )
 }
@@ -408,15 +451,17 @@ function TaskBody({ task, english, t, style }) {
 // B1/B2 never see it — the task prompt itself stays 100% Spanish at that level.
 const ENGLISH_TOGGLE_LEVELS = ['A1', 'A2']
 
-function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendExamNote, timerLabel, level }) {
+// appendNote: the fixed sentence (EXAM_NOTE_ES / NOTES_TIP_ES) added to a teacher-written prompt too.
+function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendNote, timerLabel, level }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft]     = useState('')
   const [showEnglish, setShowEnglish] = useState(true)
+  const draftRef = useRef(null)
   const allowEnglishToggle = ENGLISH_TOGGLE_LEVELS.includes(level)
 
   function open() {
     let d = custom?.spanish || ''
-    if (appendExamNote && d.endsWith(EXAM_NOTE_ES)) d = d.slice(0, -EXAM_NOTE_ES.length)
+    if (appendNote && d.endsWith(appendNote)) d = d.slice(0, -appendNote.length)
     setDraft(d)
     setEditing(true)
   }
@@ -424,7 +469,7 @@ function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendEx
   function save() {
     // english stays empty — a teacher-written prompt is graded as given.
     const spanish = draft.trim()
-    setCustom({ spanish: appendExamNote ? withExamNote(spanish, EXAM_NOTE_ES) : spanish, english: '' })
+    setCustom({ spanish: appendNote ? withExamNote(spanish, appendNote) : spanish, english: '' })
     setEditing(false)
   }
 
@@ -434,8 +479,9 @@ function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendEx
         <p aria-hidden="true" style={{ fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', color: MAROON, marginBottom: '8px' }}>
           {t.ownPromptTitle}
         </p>
-        <AccentBar t={t} />
+        <AccentBar t={t} targetRef={draftRef} onInsert={setDraft} />
         <textarea
+          ref={draftRef}
           value={draft}
           onChange={e => setDraft(e.target.value)}
           placeholder={t.ownPromptPlaceholder}
@@ -546,8 +592,14 @@ function EssayTab({ sessionId, level, onGraded, lang, essayType }) {
 
   const words = essay.trim() ? essay.trim().split(/\s+/).length : 0
 
+  const essayRef = useRef(null)
+
   function handleEssayChange(e) {
-    const val = e.target.value
+    updateEssay(e.target.value)
+  }
+
+  // shared by typing and the accent bar's Insert, so inserting a character also starts the clock
+  function updateEssay(val) {
     setEssay(val)
     if (!startedRef.current && val.trim().length > 0) {
       startedRef.current = true
@@ -593,12 +645,13 @@ function EssayTab({ sessionId, level, onGraded, lang, essayType }) {
       <TaskPrompt
         task={task} note={t[ESSAY_TYPE_NOTE_KEY[essayType] || 'noteEssay']} loading={taskLoading} onNew={newPrompt} t={t}
         custom={custom} setCustom={setCustom}
-        appendExamNote
+        appendNote={EXAM_NOTE_ES}
         timerLabel={`${t.yourTime}: ${formatTime(seconds)}`}
         level={level}
       />
-      <AccentBar t={t} />
+      <AccentBar t={t} targetRef={essayRef} onInsert={updateEssay} />
       <textarea
+        ref={essayRef}
         value={essay}
         onChange={handleEssayChange}
         placeholder={t.essayPlaceholder}
@@ -760,7 +813,7 @@ function AudioTab({ sessionId, level, onGraded, lang, oralType }) {
 
   return (
     <>
-      <TaskPrompt task={displayTask} note={note} loading={taskLoading} onNew={newTask} t={t} custom={custom} setCustom={setCustom} level={level} />
+      <TaskPrompt task={displayTask} note={note} loading={taskLoading} onNew={newTask} t={t} custom={custom} setCustom={setCustom} appendNote={NOTES_TIP_ES} level={level} />
 
       {oralType === 'qa' && qaSpanish && qaStage === 1 && (
         <div style={{ marginTop: '10px' }}>

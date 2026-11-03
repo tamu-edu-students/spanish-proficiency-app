@@ -1,6 +1,7 @@
 from django.conf import settings
 from google import genai
 from google.genai import types
+from pydantic import BaseModel
 
 
 def build_system_prompt(level="B1", mode="chat", topic=None):
@@ -16,13 +17,25 @@ RULES:
 1. ALWAYS respond in Spanish, never in English.
 2. Match CEFR level: {level}
 3. {guidance.get(level, guidance["B1"])}
-4. Correct grammar gently with "Correccion:" at the end if needed.
-5. Keep replies to 1-3 sentences.
+4. Put corrections ONLY in the `correction` field, never inside `reply`. If the student's LAST
+   message has any grammar, spelling, accent or punctuation mistake (including missing ¿ or ¡),
+   set `correction` to their whole message rewritten correctly in Spanish — just the corrected
+   sentence(s), no explanation, no label (e.g. "Que es LPAC?" → "¿Qué es LPAC?"). If it is
+   already correct, or the last message is not from the student, set `correction` to "".
+5. Keep `reply` to 1-3 sentences.
 6. Ask a follow-up question to keep conversation going.
 7. Be encouraging and patient.{topic_rule}"""
 
 
+class ChatReply(BaseModel):
+    """`correction` is the student's last message rewritten correctly ("" if it was fine);
+    the UI shows it in maroon above `reply`."""
+    correction: str
+    reply: str
+
+
 def chat(messages, level="B1", topic=None):
+    """Returns {'reply': str, 'correction': str}."""
     client = genai.Client(api_key=settings.GEMINI_API_KEY)
     contents = []
     for msg in messages:
@@ -36,9 +49,11 @@ def chat(messages, level="B1", topic=None):
         config=types.GenerateContentConfig(
             system_instruction=build_system_prompt(level, topic=topic),
             temperature=0.7,
+            response_mime_type="application/json",
+            response_schema=ChatReply.model_json_schema(),
         )
     )
-    return response.text
+    return ChatReply.model_validate_json(response.text).model_dump()
 
 
 def voice_chat(messages, level="B1"):

@@ -60,9 +60,9 @@ const WRITING_TYPE_LABEL_KEY = {
   correspondence: 'taskTypeLetter',
   lesson_plan:    'taskTypeLessonPlan',
 }
-// Letters/memos/emails is an upper-level task — B1 and B2 only.
-const CORRESPONDENCE_LEVELS = ['B1', 'B2']
-const writingTypesFor = level => CORRESPONDENCE_LEVELS.includes(level) ? WRITING_TYPES : WRITING_TYPES.filter(t => t !== 'correspondence')
+// Letters/memos/emails and Lesson Plan are upper-level tasks (A2–B2); A1 gets Opinion only.
+const UPPER_LEVELS = ['A2', 'B1', 'B2']
+const writingTypesFor = level => UPPER_LEVELS.includes(level) ? WRITING_TYPES : ['opinion']
 
 // Oral Expression's BTLPT task types (Domain II), nested under the Oral tab,
 // each mapped to its sidebar label key in i18n.js. Q&A 1 and Q&A 2 share one

@@ -86,6 +86,18 @@ class AudioQAGradingResponse(BaseModel):
 # Task prompts
 # ---------------------------------------------------------------------------
 
+# Every feedback field must carry all three rubric sections; _generate_graded re-asks
+# Gemini (up to FEEDBACK_ATTEMPTS calls in total) when one is missing.
+FEEDBACK_SECTIONS_EN = ("task completion", "topic development", "language use")
+FEEDBACK_SECTIONS_ES = ("cumplimiento de la tarea", "desarrollo del tema", "uso del lenguaje")
+FEEDBACK_ATTEMPTS = 3
+
+
+def _has_all_sections(text, headings):
+    text = (text or "").lower()
+    return all(h in text for h in headings)
+
+
 ORAL_TASK_TEMPLATE = """
 TASK PROMPT GIVEN TO PARTICIPANTS:
 {spanish}
@@ -390,9 +402,12 @@ ESSAY_TYPE_SHAPES = {
         "principal, or the PTO president — invent a realistic full name for the sender (Hispanic "
         "names are fine) and sign the message with that name and role. Format: {format}. The message "
         "must ask two or three specific questions or requests. heading names the format and the "
-        "sender, e.g. '{heading_example}'. content is the full message. "
-        "instructions tell the student to write a reply in Spanish with an appropriate greeting, "
-        "answers to every point raised, and a closing."
+        "sender, e.g. '{heading_example}'. content is the full message. Formal Spanish "
+        "correspondence ends the greeting line with a COLON, never a comma (e.g. 'Estimada "
+        "maestra de tercer grado:' or 'Estimado Sr. Rivera:'), so the message's greeting must "
+        "end with a colon. instructions tell the student to write a reply in Spanish with an "
+        "appropriate formal greeting ending in a colon (e.g. 'Estimada Sra. Morales:'), answers "
+        "to every point raised, and a closing."
     ),
     "lesson_plan": (
         "a lesson-plan writing task for a bilingual classroom, Kindergarten through Grade 5 ONLY. "
@@ -510,6 +525,28 @@ def _plain(text: str) -> str:
     text = re.sub(r"\*\*|__", "", text)
     text = re.sub(r"^[ \t]*(#+|>)[ \t]*", "", text, flags=re.M)
     return text.strip()
+
+
+_HEADER_LINE = re.compile(r"^(De|Para|A|Fecha|Asunto|CC|From|To|Date|Subject)\s*:", re.I)
+_CLOSING_LINE = re.compile(
+    r"^(Atentamente|Cordialmente|Saludos|Sinceramente|Respetuosamente|Un (cordial )?saludo|Con (cariño|aprecio)"
+    r"|Sincerely|Regards|Best|Kind regards|Warm regards|Respectfully|Cordially)\b", re.I)
+
+
+def _space_correspondence(lines: list) -> list:
+    """Standard letter layout: header lines (De:/Para:/Asunto:) stay together, then a blank
+    line between every block — date, greeting, each body paragraph, closing — with the
+    signature (name, role) directly under the closing. Done in code, since Gemini rarely
+    keeps empty list elements."""
+    lines = [line.strip() for line in lines if line and line.strip()]
+    out, in_signature = [], False
+    for prev, line in zip([None] + lines, lines):
+        same_block = in_signature or (prev and _HEADER_LINE.match(prev) and _HEADER_LINE.match(line))
+        if prev is not None and not same_block:
+            out.append("")
+        out.append(line)
+        in_signature = in_signature or bool(_CLOSING_LINE.match(line))
+    return out
 
 
 def _compose(instructions: str, heading: str, content: str) -> str:
@@ -841,7 +878,8 @@ YOUR TASK:
    Language Use:
    - <...>
    - <the rater's reason for this score>
-   Rules: those three headings verbatim, each on its own line ending in a colon; every other line a bullet
+   Rules: ALL THREE sections are required — never stop after Task Completion, even when a score is 3;
+   those three headings verbatim, each on its own line ending in a colon; every other line a bullet
    starting with "- "; two to four bullets per section; the LAST bullet of each section is always the
    rater's reason for that dimension's score; no score numbers, no field names, no extra headings.
 6. Translate that same feedback into Spanish in `feedback_spanish` — same structure, same bullet count,
@@ -922,7 +960,8 @@ YOUR TASK:
    Language Use:
    - <...>
    - <the rater's reason for this score>
-   Rules: those three headings verbatim, each on its own line ending in a colon; every other line a
+   Rules: ALL THREE sections are required in EACH question's feedback — never stop after Task
+   Completion; those three headings verbatim, each on its own line ending in a colon; every other line a
    bullet starting with "- "; two to four bullets per section; the LAST bullet of each section is
    always the rater's reason for that dimension's score; no score numbers, no field names, no extra headings.
 7. Translate each feedback into Spanish in `feedback_spanish_q1` / `feedback_spanish_q2` — same
@@ -939,6 +978,19 @@ Respond using the exact fields requested.
     # ------------------------------------------------------------------
     # Grading methods (sync — Django views are sync)
     # ------------------------------------------------------------------
+
+    def _generate_graded(self, contents, schema, feedback_fields=(("feedback", "feedback_spanish"),)):
+        """Grade, and re-ask if any feedback field dropped a rubric section — Gemini sometimes
+        writes only 'Task Completion:' and stops. Returns the last attempt if none is complete,
+        so the student still gets scores rather than an error."""
+        for attempt in range(1, FEEDBACK_ATTEMPTS + 1):
+            g = schema.model_validate_json(self._generate(contents, schema).text)
+            if all(_has_all_sections(getattr(g, en), FEEDBACK_SECTIONS_EN)
+                   and _has_all_sections(getattr(g, es), FEEDBACK_SECTIONS_ES)
+                   for en, es in feedback_fields):
+                return g
+            print(f"Feedback missing a rubric section (attempt {attempt}/{FEEDBACK_ATTEMPTS})")
+        return g
 
     def _generate(self, contents, schema, temperature=0.2):
         if not self.client:
@@ -998,7 +1050,10 @@ Never leave [bracketed] placeholders — invent concrete names."""
 
         response = self._generate(prompt, TaskPromptResponse, temperature=1.0)
         raw = TaskPromptResponse.model_validate_json(response.text).model_dump()
-        fields = {k: _plain("\n".join(v) if isinstance(v, list) else v) for k, v in raw.items()}
+        if kind == "essay" and essay_type == "correspondence":
+            raw["content"] = _space_correspondence(raw["content"])
+            raw["content_english"] = _space_correspondence(raw["content_english"])
+        fields ={k: _plain("\n".join(v) if isinstance(v, list) else v) for k, v in raw.items()}
         return {
             **fields,
             "spanish": _compose(fields["instructions"], fields["heading"], fields["content"]),
@@ -1008,8 +1063,7 @@ Never leave [bracketed] placeholders — invent concrete names."""
     def grade_essay(self, essay_text: str, task: dict = None, essay_type: str = "opinion") -> dict:
         """Grade a written essay against its task prompt. Returns scores, feedback and confidence."""
         task = task or DEFAULT_ESSAY_TASK
-        response = self._generate(self._build_essay_prompt(essay_text, task, essay_type), EssayGradingResponse)
-        g = EssayGradingResponse.model_validate_json(response.text)
+        g = self._generate_graded(self._build_essay_prompt(essay_text, task, essay_type), EssayGradingResponse)
         return {
             # Local count — Gemini's own count drifts on tokenisation.
             "word_count": len(essay_text.split()),
@@ -1042,14 +1096,12 @@ Never leave [bracketed] placeholders — invent concrete names."""
             file=audio_path, config=types.UploadFileConfig(mime_type=mime)
         )
         try:
-            response = self._generate([gemini_file, self._build_audio_prompt(task)], AudioGradingResponse)
+            g = self._generate_graded([gemini_file, self._build_audio_prompt(task)], AudioGradingResponse)
         finally:
             try:
                 self.client.files.delete(name=gemini_file.name)
             except Exception:
                 pass
-
-        g = AudioGradingResponse.model_validate_json(response.text)
 
         return {
             "transcription": g.transcription,
@@ -1084,14 +1136,15 @@ Never leave [bracketed] placeholders — invent concrete names."""
             file=audio_path, config=types.UploadFileConfig(mime_type=mime)
         )
         try:
-            response = self._generate([gemini_file, self._build_qa_audio_prompt(task)], AudioQAGradingResponse)
+            g = self._generate_graded(
+                [gemini_file, self._build_qa_audio_prompt(task)], AudioQAGradingResponse,
+                (("feedback_q1", "feedback_spanish_q1"), ("feedback_q2", "feedback_spanish_q2")),
+            )
         finally:
             try:
                 self.client.files.delete(name=gemini_file.name)
             except Exception:
                 pass
-
-        g = AudioQAGradingResponse.model_validate_json(response.text)
 
         def question_result(suffix):
             return {

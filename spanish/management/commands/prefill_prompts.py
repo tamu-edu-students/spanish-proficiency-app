@@ -16,7 +16,11 @@ class Command(BaseCommand):
             PromptPool.objects.all().delete()
         keys = [("essay", t) for t in grading_service.ESSAY_TYPE_RULES] + \
                [("audio", t) for t in grading_service.ORAL_TYPE_SHAPES]
+        # A1 Writing only offers Opinion (see writingTypesFor in App.jsx), so don't pool the others at A1
+        upper_only = {"correspondence", "lesson_plan"}
         for kind, task_type in keys:
             for level in LEVELS:
+                if level == "A1" and kind == "essay" and task_type in upper_only:
+                    continue
                 refill(kind, task_type, level)
                 self.stdout.write(f"{kind}/{task_type}/{level} ok")

@@ -81,9 +81,11 @@ function ChatScreen({ level, sessionId, lang }) {
         topic:      topic
       })
 
+      // correction is display-only — the backend only reads parts[0], so history stays clean
       setMessages([...updatedMessages, {
-        role:  'model',
-        parts: [response.data.reply]
+        role:       'model',
+        parts:      [response.data.reply],
+        correction: response.data.correction || ''
       }])
 
     } catch (error) {
@@ -232,6 +234,12 @@ function ChatScreen({ level, sessionId, lang }) {
               border:     msg.role === 'model' ? '1px solid #e0e0e0' : 'none'
             }} lang={msg.role === 'model' ? 'es' : undefined}>
               <span className="sr-only">{msg.role === 'model' ? 'Tutor: ' : 'You: '}</span>
+              {msg.correction && (
+                <p style={{ margin: '0 0 6px', color: '#500000', fontWeight: 600 }}>
+                  <span className="sr-only">{t.correctedMessage}: </span>
+                  {msg.correction}
+                </p>
+              )}
               {msg.parts[0]}
             </div>
           </div>
