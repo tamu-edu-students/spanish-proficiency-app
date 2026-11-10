@@ -188,7 +188,7 @@ function QuizScreen({ level, sessionId, lang, quizType = 'grammar' }) {
   // SCORE SCREEN
   if (quizDone) {
     const pct     = Math.round((sessionScore / totalQuestions) * 100)
-    const emoji   = pct >= 80 ? '🎉' : pct >= 50 ? '👍' : '💪'
+    const emoji   = pct >= 80 ? '🎓' : pct >= 50 ? '📘' : '📚'
     const message = pct >= 80
       ? 'Excellent work! Muy bien!'
       : pct >= 50

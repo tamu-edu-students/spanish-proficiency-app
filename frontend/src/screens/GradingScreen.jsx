@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import { strings } from '../i18n'
+import { fetchSpeech, playBuffer, stopSpeech, newAudioContext } from '../googleVoice'
 
 const API = '/api'
 
@@ -859,8 +860,10 @@ function ConversationRunner({ task, turns, turnsEnglish, showEnglish, sessionId,
   const recorderRef  = useRef(null)
   const ctxRef       = useRef(null)
   const utteranceRef = useRef(null)
+  const sourceRef    = useRef(null)   // the Google-voice clip playing now
 
   function release() {
+    stopSpeech(sourceRef)
     window.speechSynthesis?.cancel()
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
     streamRef.current?.getTracks().forEach(track => track.stop())
@@ -909,8 +912,21 @@ function ConversationRunner({ task, turns, turnsEnglish, showEnglish, sessionId,
       return
     }
     // Created inside the click so the browser lets it play sound.
-    ctxRef.current = new (window.AudioContext || window.webkitAudioContext)()
-    const canSpeak = 'speechSynthesis' in window
+    ctxRef.current = newAudioContext()
+    // The four lines in a Google voice (same as Listening), fetched together up front so
+    // there's no wait between turns. If that fails, the browser's voice reads them.
+    setTurn(0)
+    setPhase('preparing')
+    let googleClips = null
+    try {
+      // the scenario names the other person ("la Sra. Gómez") → a voice of their gender
+      const scenario = task?.content || task?.spanish || ''
+      googleClips = (await fetchSpeech(ctxRef.current, turns, undefined, scenario)).buffers
+    } catch (e) {
+      console.warn('Google voice unavailable, using the browser voice', e)
+    }
+    if (cancelledRef.current) return
+    const canSpeak = !googleClips && 'speechSynthesis' in window
     const voice = canSpeak ? await loadSpanishVoice() : null
     const startedAt = Date.now()
     const clips = []
@@ -919,7 +935,9 @@ function ConversationRunner({ task, turns, turnsEnglish, showEnglish, sessionId,
       if (cancelledRef.current) return
       setTurn(i)
       setPhase('speaking')
-      if (canSpeak) {
+      if (googleClips) {
+        await playBuffer(ctxRef.current, googleClips[i], sourceRef)
+      } else if (canSpeak) {
         await speakSpanish(turns[i], voice, utteranceRef)
       } else {
         // no speech engine: show the line instead, with time to read it
@@ -958,8 +976,8 @@ function ConversationRunner({ task, turns, turnsEnglish, showEnglish, sessionId,
     }
   }
 
-  const running = phase === 'speaking' || phase === 'recording'
-  const statusText = phase === 'speaking' ? `🔊 ${t.convListen}` : phase === 'recording' ? `🎙 ${t.convSpeak}` : ''
+  const running = phase === 'preparing' || phase === 'speaking' || phase === 'recording'
+  const statusText = phase === 'preparing' ? t.convPreparing : phase === 'speaking' ? `🔊 ${t.convListen}` : phase === 'recording' ? `🎙 ${t.convSpeak}` : ''
 
   return (
     <>

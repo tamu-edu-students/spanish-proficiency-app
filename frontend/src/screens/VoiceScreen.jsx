@@ -208,6 +208,7 @@ function VoiceScreen({ level, lang }) {
     }, 300)
   }
 
+  // Chat (Voice) uses the browser's voice (the Simulated Conversation uses the Google voices).
   function speakSpanish(text) {
     setSpeaking(true)
     setStatus(t.geminiSpeaking)

@@ -524,7 +524,9 @@ ESSAY_TYPE_SHAPES = {
 ORAL_NAME_RULE = (
     " Give the person the student speaks to an invented, realistic full name with a title and "
     "role (Hispanic names are fine), e.g. 'la Sra. Patricia Gómez, directora de la Escuela "
-    "Primaria Los Pinos' — name them in the content, never a placeholder or just a role. "
+    "Primaria Los Pinos' — name them in the content, never a placeholder or just a role. The "
+    "title must show their gender (Sr./Sra./Srta./Dr./Dra.; for a child, 'el estudiante' / "
+    "'la estudiante') — the app picks a male or female voice from it. "
     "instructions also tell the student to greet and address that person by name (e.g. "
     "'Buenos días, Sra. Gómez')."
 )

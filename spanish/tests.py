@@ -963,6 +963,53 @@ class ListeningServiceTests(TestCase):
         self.assertTrue(audio.startswith(b'RIFF'))
 
 
+class TtsEndpointTests(TestCase):
+    """Chat (Voice) and the Simulated Conversation speak with the Google voices via /api/tts/."""
+
+    def _post(self, body):
+        from . import listening_service as ls
+        client = MagicMock()
+        client.models.generate_content.side_effect = lambda **kw: tts_response()
+        with patch.object(ls, '_client', return_value=client):
+            res = self.client.post('/api/tts/', body, content_type='application/json')
+        return res, client
+
+    def test_each_text_gets_a_playable_clip_in_one_voice(self):
+        import base64
+        res, client = self._post({'texts': ['Turno uno.', 'Turno dos.'], 'voice': 'Charon'})
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['voice'], 'Charon')
+        self.assertEqual(len(res.data['clips']), 2)
+        self.assertTrue(base64.b64decode(res.data['clips'][0]['audio']))
+        voices = {c.kwargs['config'].speech_config.voice_config.prebuilt_voice_config.voice_name
+                  for c in client.models.generate_content.call_args_list}
+        self.assertEqual(voices, {'Charon'})
+
+    def test_voice_matches_the_gender_of_the_person_in_the_scenario(self):
+        from . import listening_service as ls
+        res, _ = self._post({'texts': ['Hola.'], 'context': 'Escenario: Hablas con el Sr. Andrés Rivera, director.'})
+        self.assertIn(res.data['voice'], ls.VOICES['male'])
+        res, _ = self._post({'texts': ['Hola.'], 'context': 'Escenario: Hablas con la Sra. Patricia Gómez, directora.'})
+        self.assertIn(res.data['voice'], ls.VOICES['female'])
+
+    def test_speaker_gender_reads_the_first_person_named(self):
+        from .listening_service import speaker_gender
+        self.assertEqual(speaker_gender('Hablas con la Dra. Ana Ruiz sobre el estudiante Mateo.'), 'female')
+        self.assertEqual(speaker_gender('Tu director, el Sr. Rivera, te pregunta; salúdalo.'), 'male')
+        self.assertEqual(speaker_gender('Hablas con el padre de una alumna.'), 'male')
+        self.assertIsNone(speaker_gender('Hablas con tu colega sobre el proyecto.'))
+
+    def test_unknown_voice_falls_back_to_a_google_voice(self):
+        from . import listening_service as ls
+        res, _ = self._post({'texts': ['Hola.'], 'voice': 'NotAVoice'})
+        self.assertIn(res.data['voice'], ls.ALL_VOICES)
+
+    def test_rejects_empty_or_too_many_texts(self):
+        self.assertEqual(self._post({'texts': []})[0].status_code, 400)
+        self.assertEqual(self._post({'texts': ['a'] * 7})[0].status_code, 400)
+        self.assertEqual(self._post({'texts': ['  ']})[0].status_code, 400)
+
+
 class ListeningEndpointTests(TestCase):
 
     def setUp(self):

@@ -195,6 +195,28 @@ def listening_view(request):
 
 
 @api_view(['POST'])
+def tts_view(request):
+    """Spanish text → Google (Gemini) voice audio, for Chat (Voice) and the Simulated
+    Conversation. Body: {texts: [...], voice?: 'Kore', context?: scenario
+    text — picks a voice matching the speaker's gender}. Returns {voice, clips: [{audio, audio_mime}]}."""
+    from . import listening_service
+    texts = request.data.get('texts')
+    if (not isinstance(texts, list) or not texts or len(texts) > listening_service.TTS_MAX_TEXTS
+            or not all(isinstance(t, str) and t.strip() for t in texts)):
+        return Response({'error': f'Send 1-{listening_service.TTS_MAX_TEXTS} texts.'},
+                        status=status.HTTP_400_BAD_REQUEST)
+    texts = [t.strip()[:listening_service.TTS_MAX_CHARS] for t in texts]
+    try:
+        voice, clips = call_with_retry(lambda: listening_service.speak_texts(
+            texts, request.data.get('voice'), str(request.data.get('context') or '')[:2000]))
+        return Response({'voice': voice, 'clips': clips})
+    except Exception as e:
+        print(f"TTS error: {e}")
+        return Response({'error': 'Could not generate the voice audio.'},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
 def quiz_view(request):
     try:
         level = request.data.get('level', 'B1')

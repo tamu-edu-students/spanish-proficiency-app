@@ -289,6 +289,64 @@ def encode_audio(pcm: bytes):
         return buffer.getvalue(), "audio/wav"
 
 
+ALL_VOICES = VOICES["female"] + VOICES["male"]
+TTS_MAX_TEXTS = 6       # the Simulated Conversation sends its 4 turns at once
+TTS_MAX_CHARS = 1500    # a chat reply or one conversation line
+
+
+def _speak_one(client, text, voice):
+    prompt = ("Lee en voz alta, en español latinoamericano natural, con tono amable y a ritmo "
+              "normal de habla, el siguiente texto:\n\n" + text)
+    response = client.models.generate_content(
+        model=TTS_MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_modalities=["AUDIO"],
+            speech_config=types.SpeechConfig(voice_config=types.VoiceConfig(
+                prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice)))),
+    )
+    data = response.candidates[0].content.parts[0].inline_data.data
+    audio, mime = encode_audio(base64.b64decode(data) if isinstance(data, str) else data)
+    return {"audio": base64.b64encode(audio).decode(), "audio_mime": mime}
+
+
+# Gendered Spanish titles/roles that name the other person in a scenario ("la Sra. Patricia
+# Gómez", "el Sr. Rivera", "la directora", "salúdalo"). The earliest match wins: the setup
+# sentence names the other person first.
+_GENDER_CUES = {
+    "female": r"\b(?:sra|srta|dra|lic(?:da)?|profa)\.|\b(?:señora|señorita|doña|maestra|profesora|"
+              r"directora|subdirectora|consejera|enfermera|coordinadora|madre|mamá|abuela|tía|"
+              r"la\s+estudiante|la\s+alumna|la\s+niña|salúdela|salúdala|a\s+ella)\b",
+    "male": r"\b(?:sr|dr|lic|prof)\.|\b(?:señor|don|maestro|profesor|director|subdirector|"
+            r"consejero|enfermero|coordinador|padre|papá|abuelo|tío|el\s+estudiante|el\s+alumno|"
+            r"el\s+niño|salúdelo|salúdalo|a\s+él)\b",
+}
+
+
+def speaker_gender(text):
+    """'female' / 'male' for the person a scenario names, or None if it can't tell."""
+    found = []
+    for gender, pattern in _GENDER_CUES.items():
+        m = re.search(pattern, text or "", re.IGNORECASE)
+        if m:
+            found.append((m.start(), gender))
+    return min(found)[1] if found else None
+
+
+def speak_texts(texts, voice=None, context=None):
+    """Short Spanish texts (chat replies, conversation lines) spoken with one Google voice,
+    generated in parallel. Without a known `voice`, `context` (the scenario) picks a voice
+    of the speaker's gender. Returns (voice, [{audio, audio_mime}]) in the same order."""
+    from concurrent.futures import ThreadPoolExecutor
+    if voice not in ALL_VOICES:
+        gender = speaker_gender(context)
+        voice = random.choice(VOICES[gender] if gender else ALL_VOICES)
+    client = _client()
+    with ThreadPoolExecutor(max_workers=len(texts) or 1) as pool:
+        clips = list(pool.map(lambda t: _speak_one(client, t, voice), texts))
+    return voice, clips
+
+
 def generate_selection(level="B1", selection_type=None):
     """A complete selection, ready to serve: script, questions (answers included — it's
     practice, checked client-side like the reading quiz) and base64 audio."""
