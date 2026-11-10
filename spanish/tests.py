@@ -596,6 +596,15 @@ class EssayTypeTests(TestCase):
         self.assertIn('COLON, never a comma', instruction)
         self.assertIn('Estimada Sra. Morales:', instruction)
 
+    def test_oral_tasks_with_a_listener_name_that_person(self):
+        for oral_type in ('conversation', 'qa', 'situation'):
+            with patch.object(self.service, '_generate', return_value=SimpleNamespace(text=task_json())) as gen:
+                self.service.generate_task('audio', 'B1', oral_type=oral_type)
+            self.assertIn('invented, realistic full name', gen.call_args.args[0])
+        with patch.object(self.service, '_generate', return_value=SimpleNamespace(text=task_json())) as gen:
+            self.service.generate_task('audio', 'B1', oral_type='presentation')
+        self.assertNotIn('invented, realistic full name', gen.call_args.args[0])
+
     def test_correspondence_content_gets_letter_spacing(self):
         memo = ('A: Maestra de quinto grado\nDe: Elena Flores\nAsunto: Jardín\nEstimada maestra:\n'
                 'Primer párrafo.\nSegundo párrafo.\nAtentamente,\nElena Flores\nPresidenta de la APT')
@@ -638,3 +647,50 @@ class EssayTypeTests(TestCase):
             self.assertIn(heading, prompt)
         for heading in ('Fluency:', 'Coherency:'):
             self.assertNotIn(heading, prompt)
+
+
+# ---------------------------------------------------------------------------
+# Chat grammar correction
+# ---------------------------------------------------------------------------
+
+class ChatCorrectionTests(TestCase):
+    """The correction is its own Gemini call on the student's latest message, every turn."""
+
+    def _correct(self, text, model_says):
+        from . import gemini_service
+        client = MagicMock()
+        client.models.generate_content.return_value = SimpleNamespace(text=json.dumps({'correction': model_says}))
+        with patch.object(gemini_service.genai, 'Client', return_value=client):
+            return gemini_service.correct_message(text)
+
+    def test_missing_opening_question_mark_is_added_even_if_the_model_misses_it(self):
+        self.assertEqual(self._correct('Me puedes compartir más?', ''), '¿Me puedes compartir más?')
+        self.assertEqual(self._correct('Cuáles son las razones?', 'Cuáles son las razones?'), '¿Cuáles son las razones?')
+
+    def test_correct_message_gets_no_correction(self):
+        self.assertEqual(self._correct('¿Qué es LPAC?', ''), '')
+        self.assertEqual(self._correct('¿Qué es LPAC?', '¿Qué es LPAC?'), '')
+
+    def test_english_message_is_left_alone(self):
+        self.assertEqual(self._correct('What is LPAC?', ''), '')
+
+    def test_every_turn_is_corrected_not_just_the_first(self):
+        from . import gemini_service
+        thread = [
+            {'role': 'model', 'parts': ['¡Hola!']},
+            {'role': 'user', 'parts': ['Que es LPAC?']},
+            {'role': 'model', 'parts': ['Es un comité.']},
+            {'role': 'user', 'parts': ['Me puedes compartir más?']},
+        ]
+        with patch.object(gemini_service, '_chat_reply', return_value='Claro.'), \
+             patch.object(gemini_service, 'correct_message', return_value='¿Me puedes compartir más?') as fix:
+            result = gemini_service.chat(thread, 'B1', 'LPAC')
+        fix.assert_called_once_with('Me puedes compartir más?')
+        self.assertEqual(result, {'reply': 'Claro.', 'correction': '¿Me puedes compartir más?'})
+
+    def test_a_failed_correction_still_returns_the_reply(self):
+        from . import gemini_service
+        with patch.object(gemini_service, '_chat_reply', return_value='Claro.'), \
+             patch.object(gemini_service, 'correct_message', side_effect=RuntimeError('boom')):
+            result = gemini_service.chat([{'role': 'user', 'parts': ['hola']}], 'B1')
+        self.assertEqual(result, {'reply': 'Claro.', 'correction': ''})

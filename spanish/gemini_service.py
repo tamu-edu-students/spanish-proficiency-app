@@ -1,3 +1,6 @@
+import re
+from concurrent.futures import ThreadPoolExecutor
+
 from django.conf import settings
 from google import genai
 from google.genai import types
@@ -17,43 +20,123 @@ RULES:
 1. ALWAYS respond in Spanish, never in English.
 2. Match CEFR level: {level}
 3. {guidance.get(level, guidance["B1"])}
-4. Put corrections ONLY in the `correction` field, never inside `reply`. If the student's LAST
-   message has any grammar, spelling, accent or punctuation mistake (including missing ¿ or ¡),
-   set `correction` to their whole message rewritten correctly in Spanish — just the corrected
-   sentence(s), no explanation, no label (e.g. "Que es LPAC?" → "¿Qué es LPAC?"). If it is
-   already correct, or the last message is not from the student, set `correction` to "".
-5. Keep `reply` to 1-3 sentences.
+4. Do NOT correct the student's grammar in your reply — corrections are shown to them separately.
+5. Keep replies to 1-3 sentences.
 6. Ask a follow-up question to keep conversation going.
 7. Be encouraging and patient.{topic_rule}"""
 
 
-class ChatReply(BaseModel):
-    """`correction` is the student's last message rewritten correctly ("" if it was fine);
-    the UI shows it in maroon above `reply`."""
+# Correction is its own call, on the student's latest message only. Folding it into the
+# reply call made it drift: later in a thread the model chatted and skipped corrections,
+# and it missed opening ¿/¡. The stronger grading model at temperature 0 is stricter.
+CORRECTION_MODEL = getattr(settings, "GEMINI_GRADING_MODEL", "gemini-2.5-flash")
+
+CORRECTION_PROMPT = """You are a strict Spanish proofreader for a language learner. You receive ONE
+message the student wrote. Check EVERY one of these and fix all errors you find:
+- Opening ¿ and ¡: every question MUST start with ¿ and every exclamation with ¡ (Spanish
+  requires both marks — "Me puedes ayudar?" is wrong, "¿Me puedes ayudar?" is right).
+- Written accents (qué, cuál, cómo, dónde, más, está, sí, tú, él, también, examen/exámenes, …),
+  including accents on question words.
+- Capital letter at the start of each sentence; correct end punctuation.
+- Spelling.
+- Verb conjugation, tense and mood (indicative vs. subjunctive), ser/estar, por/para.
+- Gender and number agreement; articles and prepositions.
+
+Rules:
+- Return `correction`: the student's WHOLE message rewritten correctly. Keep their meaning, words
+  and tone — change only what is wrong. No explanation, no label, no quotes.
+- If the message has no errors at all, return "".
+- If the message is not in Spanish (e.g. written in English), return "".
+
+Examples:
+"Que es LPAC?" → "¿Qué es LPAC?"
+"Me puedes compartir más?" → "¿Me puedes compartir más?"
+"cuales son las razones que un estudiante pueda tomar el examen en español?"
+→ "¿Cuáles son las razones por las que un estudiante puede tomar el examen en español?"
+"""
+
+
+class Correction(BaseModel):
     correction: str
-    reply: str
 
 
-def chat(messages, level="B1", topic=None):
-    """Returns {'reply': str, 'correction': str}."""
+_SENTENCE = re.compile(r"[^.?!]*[.?!]+|[^.?!]+$")
+
+
+def _add_opening_marks(text):
+    """Safety net for the mark the model most often misses: a sentence ending in ? or !
+    with no ¿ / ¡ in it gets one at its start."""
+    out = []
+    for sentence in _SENTENCE.findall(text):
+        body = sentence.lstrip()
+        lead = sentence[:len(sentence) - len(body)]
+        for close, opener in (("?", "¿"), ("!", "¡")):
+            if body.rstrip().endswith(close) and opener not in body:
+                body = opener + body
+        out.append(lead + body)
+    return "".join(out)
+
+
+def correct_message(text):
+    """The student's message rewritten correctly, or "" if it was already correct."""
     client = genai.Client(api_key=settings.GEMINI_API_KEY)
-    contents = []
-    for msg in messages:
-        contents.append({
-            "role":  msg["role"],
-            "parts": [{"text": msg["parts"][0]}]
-        })
+    response = client.models.generate_content(
+        model=CORRECTION_MODEL,
+        contents=text,
+        config=types.GenerateContentConfig(
+            system_instruction=CORRECTION_PROMPT,
+            temperature=0,
+            response_mime_type="application/json",
+            response_schema=Correction.model_json_schema(),
+        )
+    )
+    correction = Correction.model_validate_json(response.text).correction.strip()
+    if not correction and not _looks_spanish(text):
+        return ""   # e.g. a message in English — don't bolt ¿ onto "What is LPAC?"
+    fixed = _add_opening_marks(correction or text.strip())
+    return "" if fixed == text.strip() else fixed
+
+
+_SPANISH_WORDS = {
+    "que", "qué", "cual", "cuál", "cuales", "cuáles", "como", "cómo", "donde", "dónde", "cuando",
+    "cuándo", "por", "para", "el", "la", "los", "las", "es", "son", "un", "una", "del", "puedes",
+    "puede", "tienes", "hay", "más", "mas", "muy", "pero", "con", "se", "yo", "tú", "usted",
+}
+
+
+def _looks_spanish(text):
+    words = re.findall(r"[a-záéíóúñü]+", text.lower())
+    return bool(re.search(r"[áéíóúñ¿¡]", text)) or any(w in _SPANISH_WORDS for w in words)
+
+
+def _chat_reply(messages, level, topic):
+    client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    contents = [{"role": msg["role"], "parts": [{"text": msg["parts"][0]}]} for msg in messages]
     response = client.models.generate_content(
         model="gemini-2.5-flash-lite",
         contents=contents,
         config=types.GenerateContentConfig(
             system_instruction=build_system_prompt(level, topic=topic),
             temperature=0.7,
-            response_mime_type="application/json",
-            response_schema=ChatReply.model_json_schema(),
         )
     )
-    return ChatReply.model_validate_json(response.text).model_dump()
+    return response.text
+
+
+def chat(messages, level="B1", topic=None):
+    """Returns {'reply': str, 'correction': str}. The correction (of the student's latest
+    message, every turn) runs in parallel with the reply so it adds no wait."""
+    last = messages[-1]
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pending = pool.submit(correct_message, last["parts"][0]) if last["role"] == "user" else None
+        reply = _chat_reply(messages, level, topic)
+        try:
+            correction = pending.result() if pending else ""
+        except Exception as e:
+            # a failed correction must never cost the student their reply
+            print(f"Chat correction failed: {e}")
+            correction = ""
+    return {"reply": reply, "correction": correction}
 
 
 def voice_chat(messages, level="B1"):

@@ -430,6 +430,15 @@ ESSAY_TYPE_SHAPES = {
 # BTLPT Oral Expression task types (Domain II). Unlike the essay types, these
 # all share the generic oral rubric in _build_audio_prompt — only the prompt
 # SHAPE (what generate_task asks Gemini to produce) differs per type.
+# So the student knows whom to greet and address by name in their spoken response.
+ORAL_NAME_RULE = (
+    " Give the person the student speaks to an invented, realistic full name with a title and "
+    "role (Hispanic names are fine), e.g. 'la Sra. Patricia Gómez, directora de la Escuela "
+    "Primaria Los Pinos' — name them in the content, never a placeholder or just a role. "
+    "instructions also tell the student to greet and address that person by name (e.g. "
+    "'Buenos días, Sra. Gómez')."
+)
+
 ORAL_TYPE_SHAPES = {
     "conversation": (
         "a simulated 4-turn conversation script between the student (a bilingual teacher) and ONE "
@@ -445,7 +454,7 @@ ORAL_TYPE_SHAPES = {
         "student to respond aloud to each turn as in a real conversation; heading is 'Conversación'. "
         "Format content EXACTLY as:\nEscenario: <setup>\n\nTurno 1: <line>\nTurno 2: <line>\nTurno 3: <line>\n"
         "Turno 4: <line>\nDo not write the student's responses — only the setup and the other "
-        "person's 4 lines."
+        "person's 4 lines. The setup sentence names the other person." + ORAL_NAME_RULE
     ),
     "qa": (
         "a short bilingual-school scenario (2-3 sentences) about a topic such as a cultural "
@@ -458,7 +467,8 @@ ORAL_TYPE_SHAPES = {
         "Question 1. Each question needs a detailed 60-second spoken answer. instructions tell the "
         "student to answer both questions aloud in one recording; heading is 'Preguntas'. Format "
         "content EXACTLY as:\nEscenario: <setup>\n\nPregunta 1: <opening question>\n\n"
-        "Pregunta 2: <follow-up question>"
+        "Pregunta 2: <follow-up question>\nThe setup names the colleague or supervisor who asks "
+        "both questions." + ORAL_NAME_RULE
     ),
     "presentation": (
         "a classroom-oriented oral-presentation task for a bilingual teacher. Give a Grade level, "
@@ -481,27 +491,28 @@ ORAL_TYPE_SHAPES = {
         "reasons, (3) explain how the choice benefits students, families, teachers, or the "
         "school, and (4) address the practical consequences of the recommendation, in a 2-minute "
         "response. Do not make one option obviously correct. heading is 'Situación'; content is "
-        "the description of the situation and its alternatives."
+        "the description of the situation and its alternatives, and names who is asking for the "
+        "student's recommendation (e.g. the principal or a committee chair)." + ORAL_NAME_RULE
     ),
 }
 
 # Fallback tasks per oral type — used when Gemini generation is unavailable.
 ORAL_TYPE_DEFAULTS = {
     "conversation": {
-        "spanish": "Escenario: Estás en una feria de trabajo para un distrito escolar en Texas y hablas con la directora de una escuela.\n\nTurno 1: Buenos días, ¿cómo se enteró de nuestra escuela?\nTurno 2: ¿Qué experiencia tiene enseñando español?\nTurno 3: ¿Por qué le interesa trabajar en nuestro distrito?\nTurno 4: Ha sido un placer hablar con usted. ¿Alguna pregunta antes de despedirnos?",
-        "english": "Scenario: You are at a job fair for a Texas school district talking with a school principal.\n\nTurn 1: Good morning, how did you hear about our school?\nTurn 2: What experience do you have teaching Spanish?\nTurn 3: Why are you interested in working in our district?\nTurn 4: It's been a pleasure speaking with you. Any questions before we say goodbye?",
+        "spanish": "Escenario: Estás en una feria de trabajo para un distrito escolar en Texas y hablas con la Sra. Patricia Gómez, directora de la Escuela Primaria Los Pinos. Salúdala y dirígete a ella por su nombre.\n\nTurno 1: Buenos días, ¿cómo se enteró de nuestra escuela?\nTurno 2: ¿Qué experiencia tiene enseñando español?\nTurno 3: ¿Por qué le interesa trabajar en nuestro distrito?\nTurno 4: Ha sido un placer hablar con usted. ¿Alguna pregunta antes de despedirnos?",
+        "english": "Scenario: You are at a job fair for a Texas school district talking with Mrs. Patricia Gómez, principal of Los Pinos Elementary School. Greet her and address her by name.\n\nTurn 1: Good morning, how did you hear about our school?\nTurn 2: What experience do you have teaching Spanish?\nTurn 3: Why are you interested in working in our district?\nTurn 4: It's been a pleasure speaking with you. Any questions before we say goodbye?",
     },
     "qa": {
-        "spanish": "Escenario: Propusiste organizar un festival cultural hispano en tu escuela durante una reunión de maestros.\n\nPregunta 1: ¿Qué actividades incluiría usted en el festival y por qué?\n\nPregunta 2: ¿Cómo se aseguraría de que todos los estudiantes puedan participar, incluyendo aquellos con necesidades especiales?",
-        "english": "Scenario: You proposed organizing a Hispanic cultural festival at your school during a teacher meeting.\n\nQuestion 1: What activities would you include in the festival, and why?\n\nQuestion 2: How would you make sure all students can participate, including those with special needs?",
+        "spanish": "Escenario: Propusiste organizar un festival cultural hispano en tu escuela durante una reunión de maestros. Tu director, el Sr. Andrés Rivera, te hace dos preguntas; salúdalo y dirígete a él por su nombre.\n\nPregunta 1: ¿Qué actividades incluiría usted en el festival y por qué?\n\nPregunta 2: ¿Cómo se aseguraría de que todos los estudiantes puedan participar, incluyendo aquellos con necesidades especiales?",
+        "english": "Scenario: You proposed organizing a Hispanic cultural festival at your school during a teacher meeting. Your principal, Mr. Andrés Rivera, asks you two questions; greet him and address him by name.\n\nQuestion 1: What activities would you include in the festival, and why?\n\nQuestion 2: How would you make sure all students can participate, including those with special needs?",
     },
     "presentation": {
         "spanish": "Grado: Quinto grado\nTema: Presente a su clase la importancia de la Independencia de México.\n\nInformación de apoyo:\n- El movimiento comenzó en 1810 con el Grito de Dolores.\n- México obtuvo su independencia de España en 1821.\n- La fecha se celebra cada 16 de septiembre con desfiles y festividades.",
         "english": "Grade: Fifth grade\nTopic: Present to your class the importance of Mexican Independence.\n\nSupporting information:\n- The movement began in 1810 with the Grito de Dolores.\n- Mexico gained independence from Spain in 1821.\n- The date is celebrated every September 16th with parades and festivities.",
     },
     "situation": {
-        "spanish": "Situación: Su escuela planea un taller de matemáticas para familias y debe elegir entre dos formatos: uno en grupos pequeños por grado, y otro en una sola sesión general para todas las familias.\n\nSi le pidieran su opinión, ¿qué formato recomendaría? Justifique su respuesta con al menos dos razones válidas y convincentes.",
-        "english": "Situation: Your school is planning a family math workshop and must choose between two formats: small groups by grade level, or a single general session for all families.\n\nIf asked for your opinion, which format would you recommend? Justify your answer with at least two valid and convincing reasons.",
+        "spanish": "Situación: Su escuela planea un taller de matemáticas para familias y debe elegir entre dos formatos: uno en grupos pequeños por grado, y otro en una sola sesión general para todas las familias.\n\nLa directora, la Sra. Lucía Morales, le pide su opinión: salúdela por su nombre y dígale qué formato recomendaría. Justifique su respuesta con al menos dos razones válidas y convincentes.",
+        "english": "Situation: Your school is planning a family math workshop and must choose between two formats: small groups by grade level, or a single general session for all families.\n\nThe principal, Mrs. Lucía Morales, asks for your opinion: greet her by name and tell her which format you would recommend. Justify your answer with at least two valid and convincing reasons.",
     },
 }
 
