@@ -5,7 +5,7 @@ Ported from the spanish-grading-app FastAPI service; prompts kept verbatim.
 import random
 import re
 from pathlib import Path
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from django.conf import settings
 from google import genai
 from google.genai import types
@@ -42,6 +42,27 @@ class AudioGradingResponse(BaseModel):
     Only the three BTLPT rubric dimensions (see rubrics.py) are scored —
     Fluency and Coherency aren't part of the official BTLPT oral rubric."""
     transcription: str
+    transcription_english: str
+    score_task_completion: int
+    score_topic_development: int
+    score_language_use: int
+    feedback: str
+    feedback_spanish: str
+    confidence_task_completion: float
+    confidence_topic_development: float
+    confidence_language_use: float
+    overall_confidence: float
+    reasoning: str
+
+
+class ConversationGradingResponse(BaseModel):
+    """Flat schema for the turn-by-turn Simulated Conversation: four separate answer
+    clips (one per turn, each cut off at 20 s), transcribed separately, graded as one
+    conversation on the three BTLPT dimensions."""
+    transcription_turn_1: str
+    transcription_turn_2: str
+    transcription_turn_3: str
+    transcription_turn_4: str
     transcription_english: str
     score_task_completion: int
     score_topic_development: int
@@ -189,6 +210,48 @@ Score 1: ANY of these:
   • Low fluency — frequent long pauses, false starts, or labored expression throughout
   • Pronunciation significantly affects comprehension
 Score 0: Errors so severe communication is impossible"""
+
+# Turn-by-turn Simulated Conversation. The app reads each turn aloud and records the answer
+# for exactly 20 s (cut off at 20 s), so the length rules in ORAL_DIMENSION_CRITERIA
+# (60–90 s for a 3) would make a top score impossible; TC/TD are judged per turn instead.
+CONVERSATION_TURNS = 4
+CONVERSATION_SECONDS_PER_TURN = 20
+
+CONVERSATION_DIMENSION_CRITERIA = f"""TIMING — READ FIRST: the system gave each answer exactly {CONVERSATION_SECONDS_PER_TURN} seconds and cut the
+student off at {CONVERSATION_SECONDS_PER_TURN} seconds. NEVER penalize an answer for ending mid-sentence at the cutoff, and apply
+NO minimum total-length rule: about 15–{CONVERSATION_SECONDS_PER_TURN} seconds of real speech in a turn is a full-length answer.
+
+Each turn asks for a different move: Turn 1 — provide information; Turn 2 — explain or justify;
+Turn 3 — respond to a follow-up; Turn 4 — close the interaction appropriately (with a farewell).
+
+── TASK COMPLETION ──
+Score 3: ALL of the following must be true:
+  ✔ Every one of the 4 answers responds directly and appropriately to the line it answers
+  ✔ Turn 4 closes the conversation appropriately, including a farewell
+  ✔ Register fits the other person (usted with a principal/parent/interviewer; greeting or
+    addressing them by name where natural)
+  ✔ Each answer uses most of its {CONVERSATION_SECONDS_PER_TURN} seconds with real content
+  ✗ NOT a 3 if: any turn is unanswered, off-target, or only a word or a phrase
+  ✗ NOT a 3 if: the closing turn has no farewell
+Score 2: 3 of the 4 turns are answered appropriately, OR all 4 are answered but one or two are
+  thin (a single short sentence); the conversation still works as a conversation
+Score 1: ANY of these:
+  • Only 1–2 turns answered appropriately
+  • Most answers are fragments, filler or off-target
+  • Spends most of the time in English or code-switching rather than Spanish
+Score 0: Silent, completely off-topic or incomprehensible in every turn
+
+── TOPIC DEVELOPMENT ──
+Score 3: Answers give specific, relevant details (names, examples, reasons, concrete plans) that
+  move the conversation forward; the Turn 2 justification and Turn 3 follow-up build on what was
+  said before rather than repeating it
+Score 2: Specific detail in at least 2 answers; the others are generic but relevant
+Score 1: Answers are generic, repetitive or filler ("sí, está bien", "me gusta mucho") with no
+  real detail
+Score 0: No relevant content
+
+{ORAL_DIMENSION_CRITERIA[ORAL_DIMENSION_CRITERIA.index("── LANGUAGE USE ──"):]}"""
+
 
 # Fallback tasks — used when prompt generation is unavailable.
 DEFAULT_ESSAY_TASK = {
@@ -466,7 +529,9 @@ ORAL_TYPE_SHAPES = {
         "the student), that progressively develop the situation so the student must: (1) provide "
         "information, (2) explain or justify something, (3) respond to a follow-up, and (4) close "
         "the interaction appropriately with Turno 4 including a farewell. instructions tell the "
-        "student to respond aloud to each turn as in a real conversation; heading is 'Conversación'. "
+        "student that the other person's 4 lines will be read aloud one at a time (they are NOT "
+        "shown on screen) and that after each beep they have 20 seconds to answer aloud, as in a "
+        "real conversation; heading is 'Conversación'. "
         "Format content EXACTLY as:\nEscenario: <setup>\n\nTurno 1: <line>\nTurno 2: <line>\nTurno 3: <line>\n"
         "Turno 4: <line>\nDo not write the student's responses — only the setup and the other "
         "person's 4 lines. The setup sentence names the other person." + ORAL_NAME_RULE
@@ -1009,16 +1074,29 @@ Respond using the exact fields requested.
     # ------------------------------------------------------------------
 
     def _generate_graded(self, contents, schema, feedback_fields=(("feedback", "feedback_spanish"),)):
-        """Grade, and re-ask if any feedback field dropped a rubric section — Gemini sometimes
-        writes only 'Task Completion:' and stops. Returns the last attempt if none is complete,
-        so the student still gets scores rather than an error."""
+        """Grade, re-asking (up to FEEDBACK_ATTEMPTS calls) when:
+        - the JSON is cut off — Gemini can get stuck repeating a phrase in a transcription
+          ("Ah, sí, tengo. Ah, sí, tengo…") until it hits max_output_tokens. Retries run warmer
+          so they don't fall into the same loop;
+        - a feedback field dropped a rubric section (only 'Task Completion:', then stopped).
+        Returns the last valid attempt if none is complete, so the student still gets scores;
+        raises only if no attempt produced valid JSON."""
+        g = None
         for attempt in range(1, FEEDBACK_ATTEMPTS + 1):
-            g = schema.model_validate_json(self._generate(contents, schema).text)
+            temperature = 0.2 if attempt == 1 else 0.6
+            try:
+                candidate = schema.model_validate_json(self._generate(contents, schema, temperature=temperature).text)
+            except ValidationError as e:
+                print(f"Grader returned invalid/cut-off JSON (attempt {attempt}/{FEEDBACK_ATTEMPTS}): {str(e)[:200]}")
+                continue
+            g = candidate
             if all(_has_all_sections(getattr(g, en), FEEDBACK_SECTIONS_EN)
                    and _has_all_sections(getattr(g, es), FEEDBACK_SECTIONS_ES)
                    for en, es in feedback_fields):
                 return g
             print(f"Feedback missing a rubric section (attempt {attempt}/{FEEDBACK_ATTEMPTS})")
+        if g is None:
+            raise ValueError("The grader's response was cut off. Please try grading again.")
         return g
 
     def _generate(self, contents, schema, temperature=0.2):
@@ -1200,6 +1278,109 @@ Never leave [bracketed] placeholders — invent concrete names."""
             "transcription": g.transcription,
             "transcription_english": g.transcription_english,
             "questions": [question_result("q1"), question_result("q2")],
+            "overall_confidence": clamp_confidence(g.overall_confidence),
+            "reasoning": g.reasoning,
+        }
+
+    def _build_conversation_prompt(self, task: dict) -> str:
+        """Grading prompt for the turn-by-turn Simulated Conversation (four answer clips)."""
+        n, secs = CONVERSATION_TURNS, CONVERSATION_SECONDS_PER_TURN
+        return f"""You are a strict, accurate Spanish language evaluator grading a BTLPT Simulated Conversation.
+
+TASK GIVEN TO THE STUDENT (scenario, then the other person's {n} lines — "Turno 1" … "Turno {n}"):
+{task["spanish"]}
+({task.get("english", "")})
+
+HOW IT WAS RECORDED: the app read each "Turno" line aloud in Spanish, beeped, and recorded the
+student's answer for exactly {secs} seconds, then cut them off. You receive {n} separate audio clips,
+each labelled "Answer to Turno N", in order. Each clip contains ONLY the student's voice.
+
+RUBRIC: {SC_RUBRIC.name} — {SC_RUBRIC.description}
+
+HOW TO SCORE EACH DIMENSION — judge the {n} answers together as ONE conversation:
+
+{CONVERSATION_DIMENSION_CRITERIA}
+
+GRADING PHILOSOPHY:
+- Grade strictly and accurately — follow the rubric closely. Do NOT inflate or be charitable.
+- Judge each answer against the line it responds to; a fluent answer to the wrong question is off-target.
+- When in doubt between two scores, choose the LOWER one.
+- HOLISTIC LANGUAGE CAP: if Language Use = 1, Task Completion and Topic Development CANNOT be 3.
+
+YOUR TASK:
+1. Transcribe each clip completely and accurately into `transcription_turn_1` … `transcription_turn_{n}`
+   (include pauses as "..." and English words as-is; "" if a clip is silent).
+   Write what is said ONCE, in order. A {secs}-second clip holds at most about 60 words: if a
+   transcription grows past ~70 words, or you are writing the same phrase again and again, you
+   are looping — stop that clip there. Never repeat a phrase more times than it is audibly said.
+2. Count errors across all {n} answers before assigning Language Use.
+3. Assign scores (0-3) for Task Completion, Topic Development and Language Use.
+4. Provide concise feedback in English (under 250 words) quoting the answers, naming the turn
+   (e.g. "In Turno 2 …"), in the `feedback` field, written EXACTLY in this shape and nothing else:
+   Task Completion:
+   - <how the answers handled their turns, quoting them>
+   - <the rater's reason for this score: the decisive evidence or cap that set it>
+   Topic Development:
+   - <...>
+   - <the rater's reason for this score>
+   Language Use:
+   - <...>
+   - <the rater's reason for this score>
+   Rules: ALL THREE sections are required — never stop after Task Completion; those three headings
+   verbatim, each on its own line ending in a colon; every other line a bullet starting with "- ";
+   two to four bullets per section; the LAST bullet of each section is always the rater's reason
+   for that dimension's score; no score numbers, no field names, no extra headings.
+5. Translate that same feedback into Spanish in `feedback_spanish` — same structure, same bullet count,
+   headings translated (Cumplimiento de la tarea: / Desarrollo del tema: / Uso del lenguaje:).
+6. Assess confidence (0.0-1.0) for each score based on audio quality.
+7. Briefly explain your overall reasoning (under 100 words).
+8. Provide an English translation of all {n} answers in `transcription_english`, one line per turn
+   ("Turn 1: …").
+
+Respond using the exact fields requested.
+"""
+
+    def grade_conversation(self, audio_paths: list, task: dict = None) -> dict:
+        """Grade the turn-by-turn Simulated Conversation: one clip per turn, in order."""
+        task = task or ORAL_TYPE_DEFAULTS["conversation"]
+        if not self.client:
+            raise ValueError("Gemini API key not configured. Set GEMINI_API_KEY in environment.")
+
+        uploaded = []
+        try:
+            for path in audio_paths:
+                mime = MIME_TYPES.get(Path(path).suffix.lower(), "audio/mp4")
+                uploaded.append(self.client.files.upload(file=path, config=types.UploadFileConfig(mime_type=mime)))
+            contents = []
+            for i, gemini_file in enumerate(uploaded, start=1):
+                contents += [f"Answer to Turno {i}:", gemini_file]
+            contents.append(self._build_conversation_prompt(task))
+            g = self._generate_graded(contents, ConversationGradingResponse)
+        finally:
+            for gemini_file in uploaded:
+                try:
+                    self.client.files.delete(name=gemini_file.name)
+                except Exception:
+                    pass
+
+        turns = [getattr(g, f"transcription_turn_{i}") for i in range(1, CONVERSATION_TURNS + 1)]
+        return {
+            # one string for history/storage; the per-turn list drives the results view
+            "transcription": "\n\n".join(f"Turno {i}: {text}" for i, text in enumerate(turns, start=1)),
+            "turn_transcriptions": turns,
+            "transcription_english": g.transcription_english,
+            "scores": apply_lu_cap({
+                "task_completion": g.score_task_completion,
+                "topic_development": g.score_topic_development,
+                "language_use": g.score_language_use,
+            }),
+            "feedback": g.feedback,
+            "feedback_spanish": g.feedback_spanish,
+            "confidence_scores": {
+                "task_completion": clamp_confidence(g.confidence_task_completion),
+                "topic_development": clamp_confidence(g.confidence_topic_development),
+                "language_use": clamp_confidence(g.confidence_language_use),
+            },
             "overall_confidence": clamp_confidence(g.overall_confidence),
             "reasoning": g.reasoning,
         }

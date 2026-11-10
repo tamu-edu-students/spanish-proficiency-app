@@ -373,40 +373,56 @@ def grade_essay_view(request):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['POST'])
-def grade_audio_view(request):
-    upload = request.FILES.get('audio')
+def _upload_error(upload):
+    """Why an uploaded audio file can't be graded, or None if it's fine."""
     if not upload:
-        return Response({'error': 'No audio file provided'}, status=status.HTTP_400_BAD_REQUEST)
+        return 'No audio file provided'
     if upload.size > 25 * 1024 * 1024:
-        return Response({'error': 'Audio file too large (max 25 MB)'}, status=status.HTTP_400_BAD_REQUEST)
+        return 'Audio file too large (max 25 MB)'
+    if Path(upload.name).suffix.lower() not in grading_service.MIME_TYPES:
+        return f"Unsupported audio format. Use: {', '.join(grading_service.MIME_TYPES)}"
+    return None
 
-    suffix = Path(upload.name).suffix.lower()
-    if suffix not in grading_service.MIME_TYPES:
-        return Response(
-            {'error': f"Unsupported audio format. Use: {', '.join(grading_service.MIME_TYPES)}"},
-            status=status.HTTP_400_BAD_REQUEST
-        )
 
+def _to_temp_file(upload):
     # ponytail: audio is graded then discarded — only the transcription is kept.
-    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+    with tempfile.NamedTemporaryFile(suffix=Path(upload.name).suffix.lower(), delete=False) as tmp:
         for chunk in upload.chunks():
             tmp.write(chunk)
-        tmp_path = tmp.name
+        return tmp.name
+
+
+@api_view(['POST'])
+def grade_audio_view(request):
+    oral_type = request.data.get('oral_type') or None
+    # Turn-by-turn Simulated Conversation: one clip per turn (audio_1 … audio_4).
+    # A conversation without them (e.g. a custom prompt with no turns) is one recording.
+    turn_keys = [f'audio_{i}' for i in range(1, grading_service.CONVERSATION_TURNS + 1)]
+    is_turns = oral_type == 'conversation' and 'audio_1' in request.FILES
+    uploads = [request.FILES.get(key) for key in turn_keys] if is_turns else [request.FILES.get('audio')]
+
+    for upload in uploads:
+        error = _upload_error(upload)
+        if error:
+            return Response({'error': error}, status=status.HTTP_400_BAD_REQUEST)
+
+    tmp_paths = [_to_temp_file(upload) for upload in uploads]
     try:
         task = _task_from(request)
-        oral_type = request.data.get('oral_type') or None
-        if oral_type == 'qa':
-            result = call_with_retry(lambda: grading_service.service.grade_audio_qa(tmp_path, task))
+        if is_turns:
+            result = call_with_retry(lambda: grading_service.service.grade_conversation(tmp_paths, task))
+        elif oral_type == 'qa':
+            result = call_with_retry(lambda: grading_service.service.grade_audio_qa(tmp_paths[0], task))
         else:
-            result = call_with_retry(lambda: grading_service.service.grade_audio(tmp_path, task))
+            result = call_with_retry(lambda: grading_service.service.grade_audio(tmp_paths[0], task))
         _save_submission(get_session_id(request), 'audio', task or {}, result['transcription'], result, _duration_from(request))
         return Response(result)
     except Exception as e:
         print(f"Audio grading error: {e}")
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     finally:
-        os.unlink(tmp_path)
+        for path in tmp_paths:
+            os.unlink(path)
 
 
 @api_view(['GET'])

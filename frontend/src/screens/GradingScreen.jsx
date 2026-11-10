@@ -770,6 +770,250 @@ function splitQA(text) {
   }
 }
 
+// ── Turn-by-turn Simulated Conversation ──────────────────────────────────────
+// Each "Turno N:" line is read aloud (browser speech), then a beep, then the answer is
+// recorded for exactly TURN_SECONDS and cut off with a second beep. The four clips are
+// graded together (grading_service.grade_conversation). Must match the backend's
+// CONVERSATION_TURNS / CONVERSATION_SECONDS_PER_TURN.
+const CONVERSATION_TURNS = 4
+const TURN_SECONDS = 20
+const TURN_LINE_ES = /^\s*Turno\s*(\d)\s*[:.]\s*(.+)$/i
+const TURN_LINE_EN = /^\s*Turn\s*(\d)\s*[:.]\s*(.+)$/i
+
+// The four lines, plus the task with them hidden (listen-only: the student sees the
+// scenario, not the lines). null if the prompt has no four turns (e.g. a custom prompt) —
+// then the tab falls back to the single-recording flow.
+function parseConversation(task) {
+  if (!task) return null
+  const [field, fieldEn] = task.instructions ? ['content', 'content_english'] : ['spanish', 'english']
+  const lines = (task[field] || '').split('\n')
+  const turns = lines.map(l => l.match(TURN_LINE_ES)?.[2]).filter(Boolean)
+  if (turns.length !== CONVERSATION_TURNS) return null
+  const linesEn = (task[fieldEn] || '').split('\n')
+  const turnsEnglish = linesEn.map(l => l.match(TURN_LINE_EN)?.[2]).filter(Boolean)
+  const strip = (text, re) => (text || '').split('\n').filter(l => !re.test(l)).join('\n').replace(/\n{3,}/g, '\n\n').trim()
+  return {
+    turns,
+    turnsEnglish: turnsEnglish.length === CONVERSATION_TURNS ? turnsEnglish : [],
+    hiddenTask: { ...task, [field]: strip(task[field], TURN_LINE_ES), [fieldEn]: strip(task[fieldEn], TURN_LINE_EN) },
+  }
+}
+
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+
+async function loadSpanishVoice() {
+  const synth = window.speechSynthesis
+  if (!synth.getVoices().length) {
+    // Chrome fills the voice list asynchronously
+    await new Promise(resolve => {
+      const done = () => { synth.removeEventListener('voiceschanged', done); resolve() }
+      synth.addEventListener('voiceschanged', done)
+      setTimeout(done, 1500)
+    })
+  }
+  const voices = synth.getVoices()
+  return voices.find(v => /^es[-_](MX|US)/i.test(v.lang)) || voices.find(v => /^es/i.test(v.lang)) || null
+}
+
+function speakSpanish(text, voice, utteranceRef) {
+  return new Promise(resolve => {
+    const u = new SpeechSynthesisUtterance(text)
+    u.lang = voice?.lang || 'es-MX'
+    if (voice) u.voice = voice
+    u.rate = 0.95
+    u.onend = resolve
+    u.onerror = resolve
+    utteranceRef.current = u   // keep a reference: Chrome can drop onend on a collected utterance
+    window.speechSynthesis.speak(u)
+    setTimeout(resolve, Math.max(8000, text.length * 150))   // safety net if onend never fires
+  })
+}
+
+function beep(ctx) {
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  osc.frequency.value = 880
+  gain.gain.value = 0.2
+  osc.connect(gain).connect(ctx.destination)
+  osc.start()
+  osc.stop(ctx.currentTime + 0.3)
+  return sleep(400)
+}
+
+const clipExtension = mimeType => (mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm')
+
+function ConversationRunner({ task, turns, turnsEnglish, showEnglish, sessionId, onGraded, lang, t }) {
+  const [phase, setPhase]   = useState('idle')   // idle | speaking | recording | grading | done
+  const [turn, setTurn]     = useState(0)
+  const [left, setLeft]     = useState(TURN_SECONDS)
+  const [noVoiceLine, setNoVoiceLine] = useState('')
+  const [result, setResult] = useState(null)
+  const [error, setError]   = useState('')
+
+  const cancelledRef = useRef(false)
+  const streamRef    = useRef(null)
+  const recorderRef  = useRef(null)
+  const ctxRef       = useRef(null)
+  const utteranceRef = useRef(null)
+
+  function release() {
+    window.speechSynthesis?.cancel()
+    if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
+    streamRef.current?.getTracks().forEach(track => track.stop())
+    streamRef.current = null
+    ctxRef.current?.close().catch(() => {})
+    ctxRef.current = null
+  }
+
+  useEffect(() => () => { cancelledRef.current = true; release() }, [])
+
+  function stop() {
+    cancelledRef.current = true
+    release()
+    setPhase('idle')
+  }
+
+  // Record exactly TURN_SECONDS, then stop — the cutoff is by the clock, not by the student.
+  function recordTurn(stream) {
+    return new Promise(resolve => {
+      const chunks = []
+      const recorder = new MediaRecorder(stream)
+      recorderRef.current = recorder
+      recorder.ondataavailable = e => chunks.push(e.data)
+      recorder.onstop = () => resolve(new Blob(chunks, { type: recorder.mimeType || 'audio/webm' }))
+      recorder.start()
+      setLeft(TURN_SECONDS)
+      const started = Date.now()
+      const tick = setInterval(() => {
+        const remaining = TURN_SECONDS - Math.floor((Date.now() - started) / 1000)
+        setLeft(Math.max(0, remaining))
+        if (remaining <= 0 || cancelledRef.current) {
+          clearInterval(tick)
+          if (recorder.state === 'recording') recorder.stop()
+        }
+      }, 200)
+    })
+  }
+
+  async function start() {
+    cancelledRef.current = false
+    setError(''); setResult(null); setNoVoiceLine('')
+    try {
+      streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true })
+    } catch {
+      setError(t.micDenied)
+      return
+    }
+    // Created inside the click so the browser lets it play sound.
+    ctxRef.current = new (window.AudioContext || window.webkitAudioContext)()
+    const canSpeak = 'speechSynthesis' in window
+    const voice = canSpeak ? await loadSpanishVoice() : null
+    const startedAt = Date.now()
+    const clips = []
+
+    for (let i = 0; i < turns.length; i++) {
+      if (cancelledRef.current) return
+      setTurn(i)
+      setPhase('speaking')
+      if (canSpeak) {
+        await speakSpanish(turns[i], voice, utteranceRef)
+      } else {
+        // no speech engine: show the line instead, with time to read it
+        setNoVoiceLine(turns[i])
+        await sleep(Math.max(3000, turns[i].length * 70))
+        setNoVoiceLine('')
+      }
+      if (cancelledRef.current) return
+      await beep(ctxRef.current)
+      setPhase('recording')
+      clips.push(await recordTurn(streamRef.current))
+      if (cancelledRef.current) return
+      await beep(ctxRef.current)
+    }
+    release()
+    submit(clips, Math.round((Date.now() - startedAt) / 1000))
+  }
+
+  async function submit(clips, durationSeconds) {
+    setPhase('grading')
+    const form = new FormData()
+    clips.forEach((clip, i) => form.append(`audio_${i + 1}`, clip, `turn-${i + 1}.${clipExtension(clip.type)}`))
+    form.append('session_id', sessionId)
+    form.append('task_spanish', task?.spanish || '')
+    form.append('task_english', task?.english || '')
+    form.append('oral_type', 'conversation')
+    form.append('duration_seconds', durationSeconds)
+    try {
+      const res = await axios.post(`${API}/grade/audio/`, form)
+      setResult(res.data)
+      setPhase('done')
+      onGraded()
+    } catch (e) {
+      setError(e.response?.data?.error || t.gradingFailed)
+      setPhase('idle')
+    }
+  }
+
+  const running = phase === 'speaking' || phase === 'recording'
+  const statusText = phase === 'speaking' ? `🔊 ${t.convListen}` : phase === 'recording' ? `🎙 ${t.convSpeak}` : ''
+
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '16px', flexWrap: 'wrap' }}>
+        {running ? (
+          <button onClick={stop} style={{ ...outlineBtn, borderColor: '#b00', color: '#b00' }}>{t.convStop}</button>
+        ) : (
+          <button onClick={start} disabled={phase === 'grading'} style={primaryBtn(phase !== 'grading')}>
+            {phase === 'done' ? t.tryAgainSamePrompt : t.startConversation}
+          </button>
+        )}
+      </div>
+
+      {running && (
+        <div role="status" aria-live="polite" style={{ marginTop: '14px', padding: '16px', background: '#fff', border: `2px solid ${phase === 'recording' ? '#b00' : MAROON}` }}>
+          <p style={{ fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '13px', color: '#666', margin: '0 0 6px' }}>
+            {t.turn} {turn + 1} {t.of} {turns.length}
+          </p>
+          <p style={{ fontSize: '18px', fontWeight: 600, color: phase === 'recording' ? '#b00' : MAROON, margin: 0 }}>
+            {statusText}{phase === 'recording' && ` — ${formatTime(left)}`}
+          </p>
+          {noVoiceLine && <p lang="es" style={{ marginTop: '8px', color: MAROON }}>{noVoiceLine}</p>}
+          {phase === 'recording' && (
+            <div style={{ height: '6px', background: '#eee', borderRadius: '3px', marginTop: '10px' }}>
+              <div style={{ height: '100%', width: `${(left / TURN_SECONDS) * 100}%`, background: '#b00', borderRadius: '3px', transition: 'width 0.2s linear' }} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {phase === 'grading' && <p role="status" style={{ marginTop: '14px', color: '#666' }}>{t.grading}</p>}
+      {error && <p role="alert" style={{ color: '#b00', fontSize: '15px', marginTop: '10px' }}>{error}</p>}
+
+      {result && (
+        <>
+          <Results result={result} t={t} uiLang={lang} />
+          {/* listen-only during the task; the lines appear here, after grading */}
+          <div style={{ background: '#fff', border: '1px solid #e0e0e0', padding: '16px 20px', marginTop: '12px', fontSize: '15px', lineHeight: 1.6 }}>
+            <h3 style={{ fontFamily: "'Oswald', sans-serif", fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.08em', color: MAROON, margin: '0 0 10px' }}>
+              {t.convReview}
+            </h3>
+            {turns.map((line, i) => (
+              <div key={i} style={{ marginBottom: '12px' }}>
+                <p lang="es" style={{ margin: 0, color: MAROON }}><strong>{t.turn} {i + 1}:</strong> {line}</p>
+                {showEnglish && turnsEnglish[i] && <p lang="en" style={{ margin: 0, color: '#666', fontSize: '14px' }}>{turnsEnglish[i]}</p>}
+                <p lang="es" style={{ margin: '2px 0 0', paddingLeft: '12px', borderLeft: '3px solid #e0d0d0', color: '#333' }}>
+                  <span style={{ color: '#666' }}>{t.convYourAnswer}:</span>{' '}
+                  {result.turn_transcriptions?.[i] || <em style={{ color: '#666' }}>{t.convNoAnswer}</em>}
+                </p>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </>
+  )
+}
+
 function AudioTab({ sessionId, level, onGraded, lang, oralType }) {
   const t = strings(lang)
   const { task, loading: taskLoading, newTask, custom, setCustom } = useTask('audio', level, undefined, oralType)
@@ -785,7 +1029,10 @@ function AudioTab({ sessionId, level, onGraded, lang, oralType }) {
   const qaFieldEn = task?.instructions ? 'content_english' : 'english'
   const qaSpanish = oralType === 'qa' ? splitQA(task?.[qaField]) : null
   const qaEnglish = oralType === 'qa' ? splitQA(task?.[qaFieldEn]) : null
-  const displayTask = qaSpanish
+  const conversation = oralType === 'conversation' ? parseConversation(task) : null
+  const displayTask = conversation
+    ? conversation.hiddenTask
+    : qaSpanish
     ? {
         ...task,
         [qaField]: qaStage === 1 ? qaSpanish.stage1 : qaSpanish.stage2,
@@ -866,6 +1113,20 @@ function AudioTab({ sessionId, level, onGraded, lang, oralType }) {
         </div>
       )}
 
+      {conversation ? (
+        <ConversationRunner
+          key={task.spanish}
+          task={task}
+          turns={conversation.turns}
+          turnsEnglish={conversation.turnsEnglish}
+          showEnglish={ENGLISH_TOGGLE_LEVELS.includes(level)}
+          sessionId={sessionId}
+          onGraded={onGraded}
+          lang={lang}
+          t={t}
+        />
+      ) : (
+      <>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '16px', flexWrap: 'wrap' }}>
         <button
           onClick={recording ? stopRecording : startRecording}
@@ -901,6 +1162,8 @@ function AudioTab({ sessionId, level, onGraded, lang, oralType }) {
       {error && <p role="alert" style={{ color: '#b00', fontSize: '15px', marginTop: '10px' }}>{error}</p>}
       <p role="status" className="sr-only">{loading ? t.grading : result ? t.gradingComplete : ''}</p>
       {result && <Results result={result} t={t} uiLang={lang} />}
+      </>
+      )}
     </>
   )
 }

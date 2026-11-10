@@ -122,6 +122,7 @@ function ChatScreen({ level, sessionId, lang }) {
           {TOPICS.map(topicOption => (
             <button
               key={topicOption}
+              lang="es"
               onClick={() => startChat(topicOption)}
               style={{
                 padding:      '6px 12px',

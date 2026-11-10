@@ -112,6 +112,7 @@ function FlashcardScreen({ level, sessionId, lang }) {
           {TOPICS.map(t => (
             <button
               key={t}
+              lang="es"
               onClick={() => setTopic(t)}
               aria-pressed={topic === t}
               style={{

@@ -740,3 +740,119 @@ class SchoolContextTests(TestCase):
                 self.service.generate_task(kind, 'B1', essay_type, oral_type)
             self.assertIn(gs.SCHOOL_CONTEXT_RULE, gen.call_args.args[0], (kind, essay_type, oral_type))
             self.assertIn('grocery store', gen.call_args.args[0])
+
+
+# ---------------------------------------------------------------------------
+# Turn-by-turn Simulated Conversation
+# ---------------------------------------------------------------------------
+
+CONVERSATION_TASK = {
+    'spanish': 'Escenario: Hablas con la Sra. Gómez.\n\nTurno 1: ¿Hola?\nTurno 2: ¿Por qué?\nTurno 3: ¿Y luego?\nTurno 4: Adiós.',
+    'english': '',
+}
+
+
+def conversation_json(**overrides):
+    payload = {
+        'transcription_turn_1': 'Buenos días, Sra. Gómez.', 'transcription_turn_2': 'Porque me gusta.',
+        'transcription_turn_3': 'Luego trabajo.', 'transcription_turn_4': 'Hasta luego.',
+        'transcription_english': 'Turn 1: Good morning.',
+        'score_task_completion': 3, 'score_topic_development': 2, 'score_language_use': 2,
+        'feedback': 'Task Completion:\n- a\nTopic Development:\n- b\nLanguage Use:\n- c',
+        'feedback_spanish': 'Cumplimiento de la tarea:\n- a\nDesarrollo del tema:\n- b\nUso del lenguaje:\n- c',
+        'confidence_task_completion': 0.9, 'confidence_topic_development': 0.9,
+        'confidence_language_use': 0.9, 'overall_confidence': 0.9, 'reasoning': 'r',
+    }
+    payload.update(overrides)
+    return json.dumps(payload)
+
+
+class ConversationGradingTests(TestCase):
+
+    def setUp(self):
+        self.service = gs.AIGradingService()
+        self.service.client = MagicMock()
+        self.service.client.files.upload.side_effect = [SimpleNamespace(name=f'files/{i}') for i in range(1, 5)]
+
+    def grade(self, text=None):
+        paths = [f'/tmp/turn-{i}.webm' for i in range(1, 5)]
+        with patch.object(self.service, '_generate', return_value=SimpleNamespace(text=text or conversation_json())) as gen:
+            self.gen = gen
+            return self.service.grade_conversation(paths, CONVERSATION_TASK)
+
+    def test_each_clip_is_labelled_with_its_turn_and_all_are_deleted(self):
+        self.grade()
+        contents = self.gen.call_args.args[0]
+        self.assertEqual(contents[0], 'Answer to Turno 1:')
+        self.assertEqual(contents[6], 'Answer to Turno 4:')
+        self.assertEqual(self.service.client.files.delete.call_count, 4)
+
+    def test_per_turn_transcriptions_are_returned_and_joined(self):
+        result = self.grade()
+        self.assertEqual(result['turn_transcriptions'][3], 'Hasta luego.')
+        self.assertIn('Turno 2: Porque me gusta.', result['transcription'])
+
+    def test_prompt_drops_the_long_recording_length_rules(self):
+        prompt = self.service._build_conversation_prompt(CONVERSATION_TASK)
+        self.assertIn('NEVER penalize an answer for ending mid-sentence', prompt)
+        self.assertNotIn('60–90 seconds', prompt)
+        self.assertIn('── LANGUAGE USE ──', prompt)
+
+    def test_weak_language_use_still_caps_the_other_scores(self):
+        result = self.grade(conversation_json(score_language_use=1))
+        self.assertEqual(result['scores']['task_completion'], 2)
+
+
+class ConversationEndpointTests(TestCase):
+
+    def _post(self, files):
+        data = {'oral_type': 'conversation', 'task_spanish': CONVERSATION_TASK['spanish'], **files}
+        return self.client.post('/api/grade/audio/', data)
+
+    def test_four_turn_clips_are_graded_as_a_conversation(self):
+        files = {f'audio_{i}': SimpleUploadedFile(f'turn-{i}.webm', b'x', content_type='audio/webm') for i in range(1, 5)}
+        fake = {**AUDIO_RESULT, 'transcription': 'Turno 1: Hola.', 'turn_transcriptions': ['Hola.', '', '', '']}
+        with patch('spanish.grading_service.service.grade_conversation', return_value=fake) as grade:
+            res = self._post(files)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(grade.call_args.args[0]), 4)
+        self.assertEqual(Submission.objects.get().text, 'Turno 1: Hola.')
+
+    def test_a_missing_turn_clip_is_rejected(self):
+        files = {f'audio_{i}': SimpleUploadedFile(f'turn-{i}.webm', b'x', content_type='audio/webm') for i in range(1, 4)}
+        res = self._post(files)
+        self.assertEqual(res.status_code, 400)
+
+    def test_a_single_recording_conversation_still_uses_the_general_grader(self):
+        upload = SimpleUploadedFile('clip.webm', b'x', content_type='audio/webm')
+        with patch('spanish.grading_service.service.grade_audio', return_value=AUDIO_RESULT) as grade:
+            res = self.client.post('/api/grade/audio/', {'oral_type': 'conversation', 'audio': upload})
+        self.assertEqual(res.status_code, 200)
+        grade.assert_called_once()
+
+
+
+class GraderRetryTests(TestCase):
+    """A cut-off (looping) grader reply is retried, not shown to the student as a crash."""
+
+    def setUp(self):
+        self.service = gs.AIGradingService()
+        self.service.client = MagicMock()
+        self.service.client.files.upload.side_effect = [SimpleNamespace(name=f'files/{i}') for i in range(1, 5)]
+
+    def test_cut_off_json_from_a_transcription_loop_is_retried(self):
+        looping = '{\n "transcription_turn_1": "Ah, sí, tengo. Ah, sí, tengo. Ah,'
+        with patch.object(self.service, '_generate', side_effect=[
+            SimpleNamespace(text=looping), SimpleNamespace(text=conversation_json()),
+        ]) as gen:
+            result = self.service.grade_conversation([f'/tmp/t{i}.webm' for i in range(1, 5)], CONVERSATION_TASK)
+        self.assertEqual(gen.call_count, 2)
+        self.assertEqual(gen.call_args.kwargs['temperature'], 0.6)   # retry runs warmer
+        self.assertEqual(result['scores']['task_completion'], 3)
+
+    def test_every_attempt_cut_off_gives_a_clear_error(self):
+        looping = SimpleNamespace(text='{"transcription_turn_1": "Ah, sí, tengo. Ah,')
+        with patch.object(self.service, '_generate', return_value=looping):
+            with self.assertRaisesMessage(ValueError, 'cut off'):
+                self.service.grade_conversation([f'/tmp/t{i}.webm' for i in range(1, 5)], CONVERSATION_TASK)
+        self.assertEqual(self.service.client.files.delete.call_count, 4)
