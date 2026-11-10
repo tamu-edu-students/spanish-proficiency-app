@@ -25,35 +25,71 @@ TTS_SAMPLE_RATE = 24000   # Gemini TTS returns 16-bit mono PCM at 24 kHz
 QUESTIONS = 4
 GENERATION_ATTEMPTS = 2
 
-# The code picks the type (as with correspondence formats) — left to choose, the model
-# would always write a dialogue. Gemini multi-speaker TTS supports at most 2 voices.
+# The code picks the type AND the school situation (as with correspondence formats) — left
+# to choose, the model always writes a dialogue and drifts to generic topics (legends,
+# science lectures). Gemini multi-speaker TTS supports at most 2 voices.
+SCHOOL_SETTING = (
+    "Setting: a Texas public ELEMENTARY school (PK-5) with a bilingual / dual-language program. "
+    "The listener is a bilingual teacher, so the selection is something a teacher would really "
+    "hear at work — from families, colleagues, administrators, or while teaching."
+)
+
 SELECTION_TYPES = {
     "dialogue": (
-        "an authentic-sounding CONVERSATION between exactly 2 people connected to a Texas "
-        "public school (teacher + parent, teacher + principal, teacher + colleague, school "
-        "counselor + parent, etc.), with natural conversational turns, a practical problem or "
-        "situation, some information that is only implied, and a final request, decision or "
-        "next step. Give each speaker an invented realistic full name with a title (Hispanic "
-        "names are fine). 8-14 turns.",
+        "an authentic-sounding CONVERSATION between exactly 2 people, with natural "
+        "conversational turns, a practical problem, some information that is only implied, and "
+        "a final request, decision or next step. Give each speaker an invented realistic full "
+        "name with a title (Hispanic names are fine). 8-14 turns.",
         2,
+        [
+            "a parent-teacher conference about a child's progress in reading and math",
+            "a teacher phoning a parent about a child's frequent absences or late arrivals",
+            "a teacher reaching out to a parent about a behavior concern in class",
+            "an LPAC meeting: the bilingual/ESL coordinator explains a child's TELPAS results "
+            "and program placement (or reclassification) to a parent",
+            "a parent asking the teacher how to help with reading and homework at home",
+            "a teacher and the school counselor about a student who seems sad or withdrawn",
+            "a teacher and the principal about organizing a field trip or a family night",
+            "two teachers planning a dual-language lesson or a grade-level project",
+            "the school nurse and a parent about a child who felt sick at school",
+            "a new family enrolling a child, talking with the teacher on the first day",
+        ],
     ),
     "narrative": (
-        "a short spoken NARRATIVE or CULTURAL ACCOUNT told by one narrator — a legend, a "
-        "historical or cultural account, or a tradition — with a chronological sequence, "
-        "motivations, cultural references and a final outcome or explanation. The narrator is "
-        "an invented person with a role (e.g. a teacher telling it to the class, a museum guide).",
+        "a short spoken NARRATIVE by one speaker, with a chronological sequence, motivations, "
+        "and a final outcome or explanation. The speaker is an invented person with a name and "
+        "a school role.",
         1,
+        [
+            "a voicemail a teacher leaves for a parent about something that happened today",
+            "a teacher telling colleagues at a staff meeting how a field trip or school event went",
+            "a teacher telling the class a legend or a family tradition before a school "
+            "celebration (Día de los Muertos, Las Posadas, a Hispanic Heritage Month program)",
+            "a principal recounting the history of the school at its anniversary celebration",
+            "a parent volunteer telling the class about their job or how their family arrived in Texas",
+        ],
     ),
     "informational": (
-        "a short spoken INFORMATIONAL REPORT or MINI-LECTURE by one speaker on a content-area "
-        "or education topic (science, environment, social studies, health, bilingual "
-        "education, reading development…), with an identifiable topic, explanation of a "
-        "process or issue, facts or examples, cause and effect, possibly a statistic or an "
-        "expert reference, and broader implications. The speaker is an invented person with a "
-        "role (e.g. a science specialist, a district literacy coach).",
+        "a short spoken INFORMATIONAL message or presentation by one speaker, with an "
+        "identifiable topic, explanation of a process or issue, facts or examples, cause and "
+        "effect, and practical implications. The speaker is an invented person with a name and "
+        "a school role.",
         1,
+        [
+            "the principal's welcome message to families at back-to-school night (schedules, "
+            "pick-up, uniforms, how to contact the teacher)",
+            "a bilingual coordinator explaining the dual-language program and its benefits to parents",
+            "a district literacy coach explaining to parents how children learn to read in two languages",
+            "the school nurse informing families about vaccines, lice or healthy snacks",
+            "the counselor presenting an anti-bullying program to parents",
+            "a teacher presenting a short science or social-studies mini-lesson to a 3rd-5th grade class",
+            "an announcement about STAAR testing week and how families can help",
+        ],
     ),
 }
+
+# Dialogues (conferences, calls, LPAC meetings) are what a teacher hears most — weight them.
+SELECTION_WEIGHTS = {"dialogue": 2, "narrative": 1, "informational": 1}
 
 LEVEL_LENGTH = {
     "A1": "80-120 words. Very simple, high-frequency vocabulary, short sentences, mostly present tense, slow and clear.",
@@ -125,11 +161,15 @@ def _client():
     return genai.Client(api_key=settings.GEMINI_API_KEY)
 
 
-def _script_prompt(level, selection_type):
-    shape, speakers = SELECTION_TYPES[selection_type]
+def _script_prompt(level, selection_type, situation=None):
+    shape, speakers, situations = SELECTION_TYPES[selection_type]
+    situation = situation or random.choice(situations)
     return f"""You write BTLPT Spanish (190) Listening Comprehension practice for bilingual teachers in Texas.
 
 Write ONE selection that will be read aloud: {shape}
+
+Situation: {situation}.
+{SCHOOL_SETTING}
 
 Student level: CEFR {level}. Length: {LEVEL_LENGTH.get(level, LEVEL_LENGTH["B1"])}
 
@@ -252,7 +292,8 @@ def encode_audio(pcm: bytes):
 def generate_selection(level="B1", selection_type=None):
     """A complete selection, ready to serve: script, questions (answers included — it's
     practice, checked client-side like the reading quiz) and base64 audio."""
-    selection_type = selection_type or random.choice(list(SELECTION_TYPES))
+    selection_type = selection_type or random.choices(
+        list(SELECTION_WEIGHTS), weights=list(SELECTION_WEIGHTS.values()))[0]
     client = _client()
     last_error = None
     for _ in range(GENERATION_ATTEMPTS):

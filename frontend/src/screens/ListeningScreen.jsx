@@ -20,10 +20,61 @@ const LETTERS = ['A', 'B', 'C', 'D']
 // Same rule as the task prompts in Writing/Speaking: English is an opt-in aid at A1/A2 only.
 const ENGLISH_TOGGLE_LEVELS = ['A1', 'A2']
 
-// Why the correct answer is correct — Spanish always; at A1/A2 a "Show English" toggle
-// (styled like the one in GradingScreen's TaskPrompt) reveals the English translation.
-function Rationale({ q, allowEnglish, t }) {
+// The "Show English" pill used across the app (same look as GradingScreen's TaskPrompt).
+function EnglishToggle({ english, t }) {
   const [showEnglish, setShowEnglish] = useState(false)
+  return (
+    <>
+      <button
+        onClick={() => setShowEnglish(s => !s)}
+        aria-expanded={showEnglish}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: '8px', marginTop: '10px',
+          padding: '6px 14px', minHeight: '32px', cursor: 'pointer',
+          border: `2px solid ${MAROON}`, borderRadius: '999px',
+          background: showEnglish ? MAROON : '#fff', color: showEnglish ? '#fff' : MAROON,
+          fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '13px',
+        }}
+      >
+        <span aria-hidden="true" style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 700, fontSize: '11px', border: '1px solid currentColor', borderRadius: '3px', padding: '0 4px', lineHeight: '16px' }}>EN</span>
+        {showEnglish ? t.hideTranslation : t.showTranslation}
+        <span aria-hidden="true">{showEnglish ? '▴' : '▾'}</span>
+      </button>
+      {showEnglish && (
+        <p lang="en" style={{ borderLeft: `3px solid ${MAROON}`, paddingLeft: '12px', margin: '10px 0 0', color: '#666', fontSize: '15px', lineHeight: 1.5 }}>
+          {english}
+        </p>
+      )}
+    </>
+  )
+}
+
+// Note-taking instructions for each playback, written like the task prompts in
+// Writing/Speaking: Spanish first, English behind the toggle at A1/A2.
+const LISTENING_NOTES = {
+  first: {
+    es: 'Instrucciones: Escucha la selección con atención y toma notas breves mientras escuchas: quién habla, de qué se trata, los detalles importantes (nombres, fechas, horas, números) y lo que se pide o se decide al final. Tus notas te ayudarán a responder las preguntas.',
+    en: 'Instructions: Listen to the selection carefully and take brief notes as you listen: who is speaking, what it is about, the important details (names, dates, times, numbers) and what is requested or decided at the end. Your notes will help you answer the questions.',
+  },
+  second: {
+    es: 'Instrucciones: Lee las preguntas de abajo antes de escuchar otra vez. Durante la segunda escucha, completa tus notas y busca la información que necesitas para responder cada pregunta.',
+    en: 'Instructions: Read the questions below before listening again. During the second listening, complete your notes and look for the information you need to answer each question.',
+  },
+}
+
+function ListeningNote({ which, level, t }) {
+  const note = LISTENING_NOTES[which]
+  return (
+    <div style={{ background: '#faf8f8', border: '1px solid #f0e8e8', padding: '14px', fontSize: '15px', lineHeight: 1.6, marginBottom: '12px' }}>
+      <p lang="es" style={{ color: MAROON, margin: 0 }}>{note.es}</p>
+      {ENGLISH_TOGGLE_LEVELS.includes(level) && <EnglishToggle key={which} english={note.en} t={t} />}
+    </div>
+  )
+}
+
+// Why the correct answer is correct — Spanish always; at A1/A2 a "Show English" toggle
+// reveals the English translation.
+function Rationale({ q, allowEnglish, t }) {
   if (!q.explanation) return null
   return (
     <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #f0e8e8' }}>
@@ -31,30 +82,7 @@ function Rationale({ q, allowEnglish, t }) {
         {t.listeningRationale}
       </p>
       <p lang="es" style={{ margin: 0, color: '#555', fontSize: '15px', lineHeight: 1.5 }}>{q.explanation}</p>
-      {allowEnglish && q.explanation_english && (
-        <>
-          <button
-            onClick={() => setShowEnglish(s => !s)}
-            aria-expanded={showEnglish}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: '8px', marginTop: '10px',
-              padding: '6px 14px', minHeight: '32px', cursor: 'pointer',
-              border: `2px solid ${MAROON}`, borderRadius: '999px',
-              background: showEnglish ? MAROON : '#fff', color: showEnglish ? '#fff' : MAROON,
-              fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '13px',
-            }}
-          >
-            <span aria-hidden="true" style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 700, fontSize: '11px', border: '1px solid currentColor', borderRadius: '3px', padding: '0 4px', lineHeight: '16px' }}>EN</span>
-            {showEnglish ? t.hideTranslation : t.showTranslation}
-            <span aria-hidden="true">{showEnglish ? '▴' : '▾'}</span>
-          </button>
-          {showEnglish && (
-            <p lang="en" style={{ borderLeft: `3px solid ${MAROON}`, paddingLeft: '12px', margin: '10px 0 0', color: '#666', fontSize: '15px', lineHeight: 1.5 }}>
-              {q.explanation_english}
-            </p>
-          )}
-        </>
-      )}
+      {allowEnglish && q.explanation_english && <EnglishToggle english={q.explanation_english} t={t} />}
     </div>
   )
 }
@@ -252,6 +280,7 @@ function ListeningScreen({ level, lang }) {
         <p style={{ fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '13px', color: '#666', margin: '0 0 6px' }}>
           {phase === 'ready' || phase === 'play1' ? t.listeningFirstPlay : t.listeningSecondPlay}
         </p>
+        <ListeningNote which={phase === 'ready' || phase === 'play1' ? 'first' : 'second'} level={level} t={t} />
         <p style={{ fontSize: '18px', fontWeight: 600, color: MAROON, margin: '0 0 12px' }}>
           {playing ? `🔊 ${t.listeningPlaying}` : phase === 'ready' ? t.listeningReady : t.listeningPreviewHint}
         </p>

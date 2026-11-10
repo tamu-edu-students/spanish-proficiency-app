@@ -911,6 +911,14 @@ class ListeningServiceTests(TestCase):
             self.assertIn(q['answer'], q['options'])
             self.assertEqual(sorted(q['options']), ['a', 'b', 'c', 'd'])
 
+    def test_script_prompt_names_an_elementary_school_situation(self):
+        from . import listening_service as ls
+        for kind, (_, _, situations) in ls.SELECTION_TYPES.items():
+            prompt = ls._script_prompt('B1', kind)
+            self.assertIn('ELEMENTARY school', prompt)
+            self.assertTrue(any(f'Situation: {s}.' in prompt for s in situations))
+        self.assertIn('LPAC meeting', ls._script_prompt('B1', 'dialogue', ls.SELECTION_TYPES['dialogue'][2][3]))
+
     def test_letter_labels_the_model_writes_are_stripped(self):
         labelled = listening_json(options_1=['A) Un pintor', 'B. Un artesano', '(C) Un coleccionista', 'D - Un curandero'],
                                   answer_1='B. Un artesano')
