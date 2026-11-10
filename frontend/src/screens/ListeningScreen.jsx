@@ -160,7 +160,18 @@ function ListeningScreen({ level, lang }) {
       <div style={{ padding: '24px', textAlign: 'center' }}>
         <div aria-hidden="true" style={{ fontSize: '48px', marginBottom: '16px' }}>🎧</div>
         <h2 style={{ fontSize: '19px', fontWeight: 600, color: '#333', marginBottom: '8px' }}>{t.listeningTitle}</h2>
-        <p style={{ fontSize: '15px', color: '#666', lineHeight: 1.6, maxWidth: '560px', margin: '0 auto 16px' }}>{t.listeningIntro}</p>
+        <div style={{ ...card, maxWidth: '620px', margin: '0 auto 16px', textAlign: 'left', fontSize: '15px', lineHeight: 1.6, color: '#444' }}>
+          <h3 style={{ fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', color: MAROON, fontSize: '15px', margin: '0 0 10px' }}>
+            {t.listeningStepsTitle}
+          </h3>
+          <ol style={{ margin: '0 0 12px', paddingLeft: '22px' }}>
+            {t.listeningSteps.map((step, i) => {
+              const [label, ...rest] = step.split(': ')
+              return <li key={i} style={{ marginBottom: '6px' }}><strong style={{ color: '#333' }}>{label}:</strong> {rest.join(': ')}</li>
+            })}
+          </ol>
+          <p style={{ margin: 0, paddingTop: '10px', borderTop: '1px solid #f0e8e8', color: '#666' }}>{t.listeningRules}</p>
+        </div>
         <div style={{ display: 'inline-block', background: '#E1F5EE', color: '#085041', borderRadius: '20px', padding: '4px 14px', fontSize: '15px', marginBottom: '24px' }}>
           Level: {level}
         </div>

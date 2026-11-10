@@ -113,7 +113,15 @@ const STRINGS = {
 
     // ── listening ──
     listeningTitle:       'Listening Comprehension',
-    listeningIntro:       'You will hear a Spanish selection twice, as in the BTLPT: listen once, preview the 4 questions, listen again, then answer them one at a time. The audio cannot be paused or replayed.',
+    listeningStepsTitle:  'How it works',
+    listeningSteps: [
+      'First listening: play the recording and take brief notes on who is speaking, the topic and key details.',
+      'Preview: read the 4 questions and their answer choices.',
+      'Second listening: play it again and complete your notes.',
+      'Answer: answer the questions one at a time.',
+      'Results: see your score, why each answer is correct, and the transcript.',
+    ],
+    listeningRules:       'As on the real exam, each playback runs once from start to finish — it cannot be paused, rewound or replayed. Use headphones and find a quiet place before you start.',
     listeningStart:       'Start listening',
     listeningPreparing:   'Preparing your selection...',
     listeningLoadFailed:  'Could not load a listening selection. Please try again.',
@@ -257,7 +265,15 @@ const STRINGS = {
 
     // ── listening ──
     listeningTitle:       'Comprensión auditiva',
-    listeningIntro:       'Escucharás una selección en español dos veces, como en el BTLPT: escucha una vez, lee las 4 preguntas, escucha otra vez y luego respóndelas una por una. El audio no se puede pausar ni repetir.',
+    listeningStepsTitle:  'Cómo funciona',
+    listeningSteps: [
+      'Primera escucha: reproduce la grabación y toma notas breves sobre quién habla, el tema y los detalles clave.',
+      'Vista previa: lee las 4 preguntas y sus opciones.',
+      'Segunda escucha: escúchala otra vez y completa tus notas.',
+      'Responde: contesta las preguntas una por una.',
+      'Resultados: verás tu puntuación, por qué cada respuesta es correcta y la transcripción.',
+    ],
+    listeningRules:       'Como en el examen real, cada reproducción se escucha una sola vez de principio a fin: no se puede pausar, retroceder ni repetir. Usa audífonos y busca un lugar tranquilo antes de empezar.',
     listeningStart:       'Empezar',
     listeningPreparing:   'Preparando tu selección...',
     listeningLoadFailed:  'No se pudo cargar la selección. Inténtalo de nuevo.',
