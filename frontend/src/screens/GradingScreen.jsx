@@ -208,11 +208,32 @@ function parseMarkdownLite(text) {
   return blocks
 }
 
-function MarkdownLite({ text, style, lang }) {
+// "Grado: Kindergarten" → ['Grado', 'Kindergarten']; null for a line that isn't a short label + detail.
+const FIELD_LINE = /^([^:.?!]{1,30}):\s*(.+)$/
+const asFieldRows = lines => {
+  const rows = lines.map(line => line.match(FIELD_LINE))
+  return rows.every(Boolean) ? rows.map(m => [m[1].trim(), m[2]]) : null
+}
+
+// fieldGrid: a paragraph made entirely of "Label: detail" lines (the lesson plan's
+// Grado/Materia/TEKS/Tema/Objetivo) renders as two aligned columns — bold labels in
+// one, details all starting in the next.
+function MarkdownLite({ text, style, lang, fieldGrid }) {
   if (!text) return null
   return (
     <div style={style} lang={lang}>
       {parseMarkdownLite(text).map((b, i) => {
+        const rows = fieldGrid && b.type === 'p' ? asFieldRows(b.lines) : null
+        if (rows) {
+          return (
+            <dl key={i} style={{ display: 'grid', gridTemplateColumns: 'max-content 1fr', columnGap: '28px', rowGap: '8px', margin: '0 0 8px' }}>
+              {rows.flatMap(([label, detail], j) => [
+                <dt key={`t${j}`} style={{ fontWeight: 700 }}>{label}:</dt>,
+                <dd key={`d${j}`} style={{ margin: 0 }}>{renderMarkdownInline(detail)}</dd>,
+              ])}
+            </dl>
+          )
+        }
         if (b.type === 'ul' || b.type === 'ol') {
           const Tag = b.type
           return (
@@ -430,7 +451,7 @@ function AccentBar({ t, targetRef, onInsert }) {
 // Instructions first, then the material (letter, scenario, topic) in its own
 // card under a heading that says what it is. Prompts without the structured
 // fields (teacher-written, older history, offline fallbacks) render as one block.
-function TaskBody({ task, english, t, style }) {
+function TaskBody({ task, english, t, style, fieldGrid }) {
   const f = english
     ? { instructions: task.instructions_english, heading: task.heading_english, content: task.content_english, text: task.english }
     : { instructions: task.instructions, heading: task.heading, content: task.content, text: task.spanish }
@@ -449,7 +470,7 @@ function TaskBody({ task, english, t, style }) {
               {f.heading}
             </h3>
           )}
-          <MarkdownLite text={f.content} />
+          <MarkdownLite text={f.content} fieldGrid={fieldGrid} />
         </div>
       )}
     </div>
@@ -461,7 +482,7 @@ function TaskBody({ task, english, t, style }) {
 const ENGLISH_TOGGLE_LEVELS = ['A1', 'A2']
 
 // appendNote: the fixed sentence (EXAM_NOTE_ES / NOTES_TIP_ES) added to a teacher-written prompt too.
-function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendNote, timerLabel, level }) {
+function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendNote, timerLabel, level, fieldGrid }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft]     = useState('')
   // English starts hidden — the student reads the Spanish first and opts in to the translation.
@@ -525,7 +546,7 @@ function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendNo
         <p role="status" style={{ color: '#666' }}>{t.generatingPrompt}</p>
       ) : (
         <>
-          <TaskBody task={task} t={t} style={{ color: MAROON }} />
+          <TaskBody task={task} t={t} style={{ color: MAROON }} fieldGrid={fieldGrid} />
           {task.english && allowEnglishToggle && (
             <>
               <button
@@ -546,7 +567,7 @@ function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendNo
               </button>
               {showEnglish && (
                 <div id="task-english" style={{ borderLeft: `3px solid ${MAROON}`, paddingLeft: '12px', marginTop: '10px' }}>
-                  <TaskBody task={task} english t={t} style={{ color: '#666', fontSize: '15px' }} />
+                  <TaskBody task={task} english t={t} style={{ color: '#666', fontSize: '15px' }} fieldGrid={fieldGrid} />
                 </div>
               )}
             </>
@@ -668,6 +689,7 @@ function EssayTab({ sessionId, level, onGraded, lang, essayType }) {
       <TaskPrompt
         task={task} note={t[ESSAY_TYPE_NOTE_KEY[essayType] || 'noteEssay']} loading={taskLoading} onNew={newPrompt} t={t}
         custom={custom} setCustom={setCustom}
+        fieldGrid={essayType === 'lesson_plan'}
         appendNote={EXAM_NOTE_ES}
         timerLabel={`${t.yourTime}: ${formatTime(seconds)}`}
         level={level}

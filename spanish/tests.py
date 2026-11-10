@@ -694,3 +694,20 @@ class ChatCorrectionTests(TestCase):
              patch.object(gemini_service, 'correct_message', side_effect=RuntimeError('boom')):
             result = gemini_service.chat([{'role': 'user', 'parts': ['hola']}], 'B1')
         self.assertEqual(result, {'reply': 'Claro.', 'correction': ''})
+
+
+class SchoolContextTests(TestCase):
+    """Every generated task is steered toward school settings."""
+
+    def setUp(self):
+        self.service = gs.AIGradingService()
+        self.service.client = MagicMock()
+
+    def test_every_task_kind_carries_the_school_context_rule(self):
+        calls = [('essay', 'opinion', None), ('essay', 'correspondence', None), ('essay', 'lesson_plan', None),
+                 ('audio', 'opinion', None), ('audio', 'opinion', 'conversation'), ('audio', 'opinion', 'situation')]
+        for kind, essay_type, oral_type in calls:
+            with patch.object(self.service, '_generate', return_value=SimpleNamespace(text=task_json())) as gen:
+                self.service.generate_task(kind, 'B1', essay_type, oral_type)
+            self.assertIn(gs.SCHOOL_CONTEXT_RULE, gen.call_args.args[0], (kind, essay_type, oral_type))
+            self.assertIn('grocery store', gen.call_args.args[0])

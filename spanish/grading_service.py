@@ -203,11 +203,21 @@ DEFAULT_ORAL_TASK = {
 
 
 LEVEL_GUIDANCE = {
-    "A1": "Very simple, concrete, everyday topic. Short prompt, basic vocabulary.",
-    "A2": "Simple familiar topic (school, family, food, routines). Plain vocabulary.",
-    "B1": "Everyday social or school issue the student can reason about.",
-    "B2": "Abstract or civic topic requiring nuanced argument and precise vocabulary.",
+    "A1": "Very simple, concrete school topic (classroom, supplies, schedule, a school day). Short prompt, basic vocabulary.",
+    "A2": "Simple familiar school topic (class routines, school events, lunch, homework, family involvement). Plain vocabulary.",
+    "B1": "A school or education issue the student can reason about.",
+    "B2": "An abstract or policy-level education issue requiring nuanced argument and precise vocabulary.",
 }
+
+# Shared by every AI-generated Writing and Speaking task (not the grammar or reading
+# quizzes): the app prepares bilingual teachers, so tasks stay in school settings.
+SCHOOL_CONTEXT_RULE = (
+    "Keep the topic tied to school life as much as possible: classrooms, teaching and learning, "
+    "students, parents and families, colleagues and administrators, school events and policies. "
+    "A scene outside school is fine (e.g. a teacher meets a student or their parent at the grocery "
+    "store, a park or a community event) as long as the conversation is about school, class or "
+    "the student's learning."
+)
 
 
 # BTLPT written-task types. Only Task Completion / Topic Development differ;
@@ -390,7 +400,7 @@ CORRESPONDENCE_FORMATS = [
 
 ESSAY_TYPE_SHAPES = {
     "opinion": (
-        "an opinion question about a school, community or everyday policy — phrased so the "
+        "an opinion question about a school or education policy — phrased so the "
         "writer must take a side AND give at least two advantages and two disadvantages. "
         "Put the question in instructions, ending with: 'Sustenta tus ideas indicando un mínimo "
         "de dos ventajas y dos desventajas.' Leave heading and content empty."
@@ -1039,7 +1049,8 @@ Respond using the exact fields requested.
         else:
             shape = (
                 "a speaking prompt asking the student to describe a personal experience or a "
-                "hypothetical they can talk about for 50-120 seconds"
+                "hypothetical related to school, teaching or learning that they can talk about "
+                "for 50-120 seconds"
             )
             example = DEFAULT_ORAL_TASK["spanish"]
 
@@ -1048,6 +1059,8 @@ Respond using the exact fields requested.
 The prompt must be {shape}
 
 Level {level} guidance: {LEVEL_GUIDANCE.get(level, LEVEL_GUIDANCE["B1"])}
+
+Setting: {SCHOOL_CONTEXT_RULE}
 
 Pick a topic that is NOT this example, and not about school uniforms or travel: "{example}"
 
