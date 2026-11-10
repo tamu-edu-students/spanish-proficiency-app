@@ -398,6 +398,10 @@ CORRESPONDENCE_FORMATS = [
      "heading_example": "Carta de la Sra. Lucía Morales (madre de familia)"},
 ]
 
+# Same reason: left to choose, Gemini ties "simple" levels to young grades (A2 never got
+# above Grade 2). The code picks uniformly so every level sees every grade.
+LESSON_PLAN_GRADES = ["Kindergarten", "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5"]
+
 ESSAY_TYPE_SHAPES = {
     "opinion": (
         "an opinion question about a school or education policy — phrased so the "
@@ -421,7 +425,8 @@ ESSAY_TYPE_SHAPES = {
     ),
     "lesson_plan": (
         "a lesson-plan writing task for a bilingual classroom, Kindergarten through Grade 5 ONLY. "
-        "Base it on the Texas Essential Knowledge and Skills (TEKS, "
+        "The grade is {grade} — use exactly this grade (it was chosen for you; the CEFR level "
+        "sets only the difficulty of the Spanish, never the grade). Base it on the Texas Essential Knowledge and Skills (TEKS, "
         "https://tea.texas.gov/curriculum-and-instruction/texas-essential-knowledge-and-skills-teks): "
         "pick a subject from Spanish Language Arts and Reading (19 TAC Ch. 128, §128.2 K – §128.7 "
         "Grade 5), Mathematics (Ch. 111, §111.2 K – §111.7 Grade 5), Science (Ch. 112, §112.2 K – "
@@ -1042,6 +1047,8 @@ Respond using the exact fields requested.
             shape = ESSAY_TYPE_SHAPES.get(essay_type, ESSAY_TYPE_SHAPES["opinion"])
             if essay_type == "correspondence":
                 shape = shape.format(**random.choice(CORRESPONDENCE_FORMATS))
+            elif essay_type == "lesson_plan":
+                shape = shape.format(grade=random.choice(LESSON_PLAN_GRADES))
             example = DEFAULT_ESSAY_TASK["spanish"]
         elif oral_type in ORAL_TYPE_SHAPES:
             shape = ORAL_TYPE_SHAPES[oral_type]

@@ -624,6 +624,15 @@ class EssayTypeTests(TestCase):
             self.assertIn(f'Format: {marker}', instruction)
             self.assertNotIn('{', instruction.split('Level B1 guidance')[0])
 
+    def test_lesson_plan_grade_is_chosen_by_code_not_tied_to_level(self):
+        with patch.object(gs.random, 'choice', return_value='Grade 4'), patch.object(
+            self.service, '_generate', return_value=SimpleNamespace(text=task_json())
+        ) as gen:
+            self.service.generate_task('essay', 'A2', 'lesson_plan')
+        instruction = gen.call_args.args[0]
+        self.assertIn('The grade is Grade 4', instruction)
+        self.assertNotIn('{grade}', instruction)
+
     def test_lesson_plan_task_is_teks_aligned_and_k_to_5(self):
         with patch.object(
             self.service, '_generate',
