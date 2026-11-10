@@ -856,3 +856,121 @@ class GraderRetryTests(TestCase):
             with self.assertRaisesMessage(ValueError, 'cut off'):
                 self.service.grade_conversation([f'/tmp/t{i}.webm' for i in range(1, 5)], CONVERSATION_TASK)
         self.assertEqual(self.service.client.files.delete.call_count, 4)
+
+
+# ---------------------------------------------------------------------------
+# Listening Comprehension
+# ---------------------------------------------------------------------------
+
+def listening_json(**overrides):
+    payload = {
+        'title': 'Una reunión', 'speaker_names': ['Sra. Gómez', 'Sr. Ruiz'],
+        'speaker_roles': ['maestra', 'padre'], 'speaker_genders': ['female', 'male'],
+        'line_speakers': ['Sra. Gómez', 'Sr. Ruiz'], 'line_texts': ['Buenos días.', 'Hola.'],
+    }
+    for i in range(1, 5):
+        payload.update({f'question_{i}': f'¿Pregunta {i}?', f'options_{i}': ['a', 'b', 'c', 'd'],
+                        f'answer_{i}': 'b', f'explanation_{i}': 'Porque sí.',
+                        f'explanation_english_{i}': 'Because.'})
+    payload.update(overrides)
+    return json.dumps(payload)
+
+
+def tts_response(pcm=b'\x00\x00' * 240):
+    part = SimpleNamespace(inline_data=SimpleNamespace(data=pcm))
+    return SimpleNamespace(candidates=[SimpleNamespace(content=SimpleNamespace(parts=[part]))])
+
+
+class ListeningServiceTests(TestCase):
+
+    def _generate(self, script_texts, selection_type='dialogue'):
+        from . import listening_service as ls
+        client = MagicMock()
+        client.models.generate_content.side_effect = [SimpleNamespace(text=t) for t in script_texts] + [tts_response()]
+        with patch.object(ls, '_client', return_value=client):
+            return ls.generate_selection('B1', selection_type), client
+
+    def test_selection_has_script_questions_and_playable_audio(self):
+        import base64
+        selection, _ = self._generate([listening_json()])
+        self.assertEqual(len(selection['questions']), 4)
+        self.assertEqual(selection['script'][0], {'speaker': 'Sra. Gómez', 'text': 'Buenos días.'})
+        self.assertIn(selection['audio_mime'], ('audio/mpeg', 'audio/wav'))
+        self.assertTrue(base64.b64decode(selection['audio']))
+
+    def test_each_question_carries_a_spanish_and_english_rationale(self):
+        selection, _ = self._generate([listening_json()])
+        self.assertEqual(selection['questions'][0]['explanation'], 'Porque sí.')
+        self.assertEqual(selection['questions'][0]['explanation_english'], 'Because.')
+
+    def test_answer_stays_among_the_shuffled_options(self):
+        selection, _ = self._generate([listening_json()])
+        for q in selection['questions']:
+            self.assertIn(q['answer'], q['options'])
+            self.assertEqual(sorted(q['options']), ['a', 'b', 'c', 'd'])
+
+    def test_a_malformed_selection_is_regenerated(self):
+        bad = listening_json(answer_2='z')   # answer not among the options
+        selection, client = self._generate([bad, listening_json()])
+        self.assertEqual(client.models.generate_content.call_count, 3)   # bad script, good script, TTS
+        self.assertEqual(selection['questions'][1]['answer'], 'b')
+
+    def test_dialogue_gets_two_distinct_voices_with_matching_labels(self):
+        _, client = self._generate([listening_json()])
+        tts_call = client.models.generate_content.call_args_list[-1]
+        speakers = tts_call.kwargs['config'].speech_config.multi_speaker_voice_config.speaker_voice_configs
+        self.assertEqual([s.speaker for s in speakers], ['SraGomez', 'SrRuiz'])
+        self.assertNotEqual(speakers[0].voice_config.prebuilt_voice_config.voice_name,
+                            speakers[1].voice_config.prebuilt_voice_config.voice_name)
+        self.assertIn('SraGomez: Buenos días.', tts_call.kwargs['contents'])
+
+    def test_a_talk_has_one_speaker_and_one_voice(self):
+        talk = listening_json(speaker_names=['Dra. Vega'], speaker_roles=['especialista'],
+                              speaker_genders=['female'], line_speakers=['Dra. Vega'], line_texts=['Hoy hablamos.'])
+        _, client = self._generate([talk], 'informational')
+        config = client.models.generate_content.call_args_list[-1].kwargs['config']
+        self.assertIsNotNone(config.speech_config.voice_config)
+
+    def test_wav_fallback_when_the_mp3_encoder_is_missing(self):
+        from . import listening_service as ls
+        with patch.dict('sys.modules', {'lameenc': None}):
+            audio, mime = ls.encode_audio(b'\x00\x00' * 100)
+        self.assertEqual(mime, 'audio/wav')
+        self.assertTrue(audio.startswith(b'RIFF'))
+
+
+class ListeningEndpointTests(TestCase):
+
+    def setUp(self):
+        refill = patch('spanish.prompt_pool.refill_async')
+        refill.start()
+        self.addCleanup(refill.stop)
+
+    def test_serves_a_pooled_selection_for_the_level(self):
+        pooled = {'title': 'pooled', 'questions': [{'explanation': 'x', 'explanation_english': 'y'}]}
+        PromptPool.objects.create(kind='listening', task_type='', level='A2', task=pooled)
+        res = self.client.post('/api/listening/', {'level': 'A2'})
+        self.assertEqual(res.json(), pooled)
+        self.assertFalse(PromptPool.objects.exists())
+
+    def test_a_stale_selection_without_english_rationale_is_dropped_not_served(self):
+        stale = {'title': 'old', 'questions': [{'explanation': 'x'}]}
+        fresh = {'title': 'new', 'questions': [{'explanation': 'x', 'explanation_english': 'y'}]}
+        PromptPool.objects.create(kind='listening', task_type='', level='A1', task=stale)
+        with patch('spanish.listening_service.generate_selection', return_value=fresh):
+            res = self.client.post('/api/listening/', {'level': 'A1'})
+        self.assertEqual(res.json()['title'], 'new')
+        self.assertFalse(PromptPool.objects.exists())
+
+    def test_generates_live_when_the_pool_is_empty(self):
+        with patch('spanish.listening_service.generate_selection', return_value={'title': 'live'}) as gen:
+            res = self.client.post('/api/listening/', {'level': 'B2'})
+        self.assertEqual(res.json(), {'title': 'live'})
+        gen.assert_called_once_with('B2')
+
+    def test_listening_pool_is_smaller_and_prefilled(self):
+        self.assertLess(prompt_pool.pool_size('listening'), prompt_pool.pool_size('essay'))
+        from django.core.management import call_command
+        with patch('spanish.management.commands.prefill_prompts.refill') as refill:
+            call_command('prefill_prompts', stdout=open(os.devnull, 'w'))
+        self.assertIn(('listening', '', 'B1'), {c.args for c in refill.call_args_list})

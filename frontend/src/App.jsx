@@ -6,6 +6,7 @@ import QuizScreen      from './screens/QuizScreen'
 import ProgressScreen  from './screens/ProgressScreen'
 import VoiceScreen     from './screens/VoiceScreen'
 import GradingScreen   from './screens/GradingScreen'
+import ListeningScreen from './screens/ListeningScreen'
 import { strings }     from './i18n'
 import './App.css'
 
@@ -22,6 +23,7 @@ const LEVELS = [
 // 'speaking' is the free-topic Graded Speaking grader.
 const TAB_LABELS = {
   en: {
+    listening: 'Listening',
     oral: 'Speaking',
     reading: 'Reading',
     writing: 'Writing',
@@ -33,6 +35,7 @@ const TAB_LABELS = {
     progress: 'Progress',
   },
   es: {
+    listening: 'Comprensión auditiva',
     oral: 'Expresión oral',
     reading: 'Lectura',
     writing: 'Escritura',
@@ -47,7 +50,7 @@ const TAB_LABELS = {
 
 // Sidebar sections, in display order. Empty tabs[] renders a "coming soon" stub.
 const TAB_SECTIONS = [
-  { en: 'Listening', es: 'Comprensión auditiva', tabs: [] },
+  { en: 'Listening', es: 'Comprensión auditiva', tabs: ['listening'] },
   { en: 'Speaking',  es: 'Expresión oral',       tabs: ['oral'] },
   { en: 'Reading',   es: 'Lectura',              tabs: ['reading'] },
   { en: 'Writing',   es: 'Escritura',            tabs: ['writing'] },
@@ -427,6 +430,7 @@ function App() {
         {activeTab === 'chat'      && <ChatScreen      level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
         {activeTab === 'flashcard' && <FlashcardScreen level={userLevel} sessionId={SESSION_ID} lang={labelLanguage} />}
         {activeTab === 'quiz'      && <QuizScreen      level={userLevel} sessionId={SESSION_ID} quizType="grammar" lang={labelLanguage} />}
+        {activeTab === 'listening' && <ListeningScreen level={userLevel} lang={labelLanguage} />}
         {activeTab === 'reading'  && <QuizScreen      level={userLevel} sessionId={SESSION_ID} quizType="reading" lang={labelLanguage} />}
         {/* key={essayType}/{oralType} forces a full remount on subsection switch — otherwise
             the same EssayTab/AudioTab instance stays mounted and carries over its draft

@@ -7,6 +7,7 @@ urlpatterns = [
     path('quiz/',         views.quiz_view,           name='quiz'),
     path('quiz/batch/', views.quiz_batch_view),
     path('quiz/reading/', views.reading_quiz_view, name='reading_quiz'),
+    path('listening/',    views.listening_view,      name='listening'),
     path('quiz/check/',   views.check_answer_view,  name='check_answer'),
     path('progress/',     views.progress_view,       name='progress'),
     path('progress/get/', views.get_progress_view,  name='get_progress'),

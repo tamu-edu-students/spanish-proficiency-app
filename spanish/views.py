@@ -180,6 +180,21 @@ def reading_quiz_view(request):
 
 
 @api_view(['POST'])
+def listening_view(request):
+    """One Listening Comprehension selection (script, 4 questions, base64 audio) for the level,
+    served from the pre-generated pool when one is ready."""
+    try:
+        level = request.data.get('level', 'B1')
+        if level not in prompt_pool.LEVELS:
+            level = 'B1'
+        return Response(call_with_retry(lambda: prompt_pool.take('listening', '', level)))
+    except Exception as e:
+        print(f"Listening selection error: {e}")
+        return Response({'error': 'Could not prepare a listening selection. Please try again.'},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
 def quiz_view(request):
     try:
         level = request.data.get('level', 'B1')
