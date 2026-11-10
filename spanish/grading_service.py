@@ -546,17 +546,20 @@ _CLOSING_LINE = re.compile(
 
 def _space_correspondence(lines: list) -> list:
     """Standard letter layout: header lines (De:/Para:/Asunto:) stay together, then a blank
-    line between every block — date, greeting, each body paragraph, closing — with the
-    signature (name, role) directly under the closing. Done in code, since Gemini rarely
-    keeps empty list elements."""
+    line between every block — date, greeting, each body paragraph, closing — plus a blank
+    line after the closing ("Atentamente,") where the handwritten signature goes, with the
+    name and role together below it. Done in code, since Gemini rarely keeps empty list
+    elements."""
     lines = [line.strip() for line in lines if line and line.strip()]
     out, in_signature = [], False
     for prev, line in zip([None] + lines, lines):
-        same_block = in_signature or (prev and _HEADER_LINE.match(prev) and _HEADER_LINE.match(line))
+        just_closed = prev is not None and not in_signature and bool(_CLOSING_LINE.match(prev))
+        in_signature = in_signature or just_closed
+        same_block = (in_signature and not just_closed) or (
+            prev and _HEADER_LINE.match(prev) and _HEADER_LINE.match(line))
         if prev is not None and not same_block:
             out.append("")
         out.append(line)
-        in_signature = in_signature or bool(_CLOSING_LINE.match(line))
     return out
 
 

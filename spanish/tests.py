@@ -612,7 +612,7 @@ class EssayTypeTests(TestCase):
             task = self.service.generate_task('essay', 'B1', 'correspondence')
         self.assertEqual(task['content'], (
             'A: Maestra de quinto grado\nDe: Elena Flores\nAsunto: Jardín\n\nEstimada maestra:\n\n'
-            'Primer párrafo.\n\nSegundo párrafo.\n\nAtentamente,\nElena Flores\nPresidenta de la APT'))
+            'Primer párrafo.\n\nSegundo párrafo.\n\nAtentamente,\n\nElena Flores\nPresidenta de la APT'))
 
     def test_correspondence_format_is_chosen_by_code_not_the_model(self):
         for fmt, marker in zip(gs.CORRESPONDENCE_FORMATS, ('an email', 'a memo', 'a letter')):

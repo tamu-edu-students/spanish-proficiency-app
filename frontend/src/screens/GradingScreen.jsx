@@ -347,6 +347,13 @@ const outlineBtn = {
   fontSize: '14px', cursor: 'pointer',
 }
 
+// The filled maroon prompt-box action (New prompt / Write your own prompt).
+const primaryBtn = (enabled = true) => ({
+  ...outlineBtn, padding: '12px 28px', fontSize: '16px',
+  background: enabled ? MAROON : '#ccc', borderColor: enabled ? MAROON : '#ccc', color: '#fff',
+  cursor: enabled ? 'pointer' : 'not-allowed',
+})
+
 const linkBtn = (enabled = true) => ({
   background: 'none', border: 'none', color: MAROON, fontSize: '14px',
   cursor: enabled ? 'pointer' : 'not-allowed', textDecoration: 'underline', padding: 0,
@@ -457,7 +464,8 @@ const ENGLISH_TOGGLE_LEVELS = ['A1', 'A2']
 function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendNote, timerLabel, level }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft]     = useState('')
-  const [showEnglish, setShowEnglish] = useState(true)
+  // English starts hidden — the student reads the Spanish first and opts in to the translation.
+  const [showEnglish, setShowEnglish] = useState(false)
   const draftRef = useRef(null)
   const allowEnglishToggle = ENGLISH_TOGGLE_LEVELS.includes(level)
 
@@ -520,10 +528,27 @@ function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendNo
           <TaskBody task={task} t={t} style={{ color: MAROON }} />
           {task.english && allowEnglishToggle && (
             <>
-              {showEnglish && <TaskBody task={task} english t={t} style={{ color: '#666', fontSize: '15px', marginTop: '6px' }} />}
-              <button onClick={() => setShowEnglish(s => !s)} style={{ ...linkBtn(), marginTop: '6px' }}>
+              <button
+                onClick={() => setShowEnglish(s => !s)}
+                aria-expanded={showEnglish}
+                aria-controls="task-english"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '8px', marginTop: '10px',
+                  padding: '6px 14px', minHeight: '32px', cursor: 'pointer',
+                  border: `2px solid ${MAROON}`, borderRadius: '999px',
+                  background: showEnglish ? MAROON : '#fff', color: showEnglish ? '#fff' : MAROON,
+                  fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '13px',
+                }}
+              >
+                <span aria-hidden="true" style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 700, fontSize: '11px', border: '1px solid currentColor', borderRadius: '3px', padding: '0 4px', lineHeight: '16px' }}>EN</span>
                 {showEnglish ? t.hideTranslation : t.showTranslation}
+                <span aria-hidden="true">{showEnglish ? '▴' : '▾'}</span>
               </button>
+              {showEnglish && (
+                <div id="task-english" style={{ borderLeft: `3px solid ${MAROON}`, paddingLeft: '12px', marginTop: '10px' }}>
+                  <TaskBody task={task} english t={t} style={{ color: '#666', fontSize: '15px' }} />
+                </div>
+              )}
             </>
           )}
         </>
@@ -532,15 +557,11 @@ function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendNo
         <span style={{ color: '#666', fontSize: '14px' }}>{note}</span>
         {timerLabel && <span style={{ color: MAROON, fontSize: '14px', fontWeight: 600 }}>{timerLabel}</span>}
         <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <button onClick={open} style={linkBtn()}>{t.ownPrompt}</button>
+          <button onClick={open} style={primaryBtn()}>{t.ownPrompt}</button>
           {custom ? (
             <button onClick={() => setCustom(null)} style={linkBtn()}>{t.backToGenerated}</button>
           ) : (
-            <button
-              onClick={onNew}
-              disabled={loading}
-              style={{ ...outlineBtn, padding: '12px 28px', fontSize: '16px', background: loading ? '#ccc' : MAROON, borderColor: loading ? '#ccc' : MAROON, color: '#fff', cursor: loading ? 'not-allowed' : 'pointer' }}
-            >
+            <button onClick={onNew} disabled={loading} style={primaryBtn(!loading)}>
               {t.newPrompt}
             </button>
           )}
