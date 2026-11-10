@@ -481,6 +481,10 @@ function TaskBody({ task, english, t, style, fieldGrid }) {
 // B1/B2 never see it — the task prompt itself stays 100% Spanish at that level.
 const ENGLISH_TOGGLE_LEVELS = ['A1', 'A2']
 
+// "Write your own prompt" is hidden for now; the editing logic below is kept intact —
+// set this to true to bring the button back in every section.
+const SHOW_OWN_PROMPT = false
+
 // appendNote: the fixed sentence (EXAM_NOTE_ES / NOTES_TIP_ES) added to a teacher-written prompt too.
 function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendNote, timerLabel, level, fieldGrid }) {
   const [editing, setEditing] = useState(false)
@@ -578,7 +582,7 @@ function TaskPrompt({ task, note, loading, onNew, t, custom, setCustom, appendNo
         <span style={{ color: '#666', fontSize: '14px' }}>{note}</span>
         {timerLabel && <span style={{ color: MAROON, fontSize: '14px', fontWeight: 600 }}>{timerLabel}</span>}
         <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <button onClick={open} style={primaryBtn()}>{t.ownPrompt}</button>
+          {SHOW_OWN_PROMPT && <button onClick={open} style={primaryBtn()}>{t.ownPrompt}</button>}
           {custom ? (
             <button onClick={() => setCustom(null)} style={linkBtn()}>{t.backToGenerated}</button>
           ) : (
