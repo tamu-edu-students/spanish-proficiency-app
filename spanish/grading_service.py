@@ -266,11 +266,22 @@ DEFAULT_ORAL_TASK = {
 
 
 LEVEL_GUIDANCE = {
-    "A1": "Very simple, concrete school topic (classroom, supplies, schedule, a school day). Short prompt, basic vocabulary.",
-    "A2": "Simple familiar school topic (class routines, school events, lunch, homework, family involvement). Plain vocabulary.",
-    "B1": "A school or education issue the student can reason about.",
+    "A1": "Very simple, concrete topic from a teacher's day (their classroom, supplies, schedule, their students). Short prompt, basic vocabulary.",
+    "A2": "Simple familiar teaching topic (class routines, school events, talking with families, the homework they assign). Plain vocabulary.",
+    "B1": "A school or education issue a teacher can reason about.",
     "B2": "An abstract or policy-level education issue requiring nuanced argument and precise vocabulary.",
 }
+
+# The BTLPT certifies teachers: whoever answers a Writing/Speaking task is a bilingual
+# teacher, so tasks never cast them as a K-12 pupil ("describe your favourite class").
+TEACHER_ROLE_RULE = (
+    "the person answering is a bilingual teacher (or teacher candidate) at a Texas public "
+    "school — NOT a K-12 student. Write the task from the teacher's perspective: they write or "
+    "speak as a teacher to their students, parents and families, colleagues or administrators, "
+    "and any question asks about their teaching, classroom or professional view. Never ask "
+    "about their own homework, grades, classes or life as a pupil. (\"Student\" in these "
+    "instructions means the teacher using this app.)"
+)
 
 # Shared by every AI-generated Writing and Speaking task (not the grammar or reading
 # quizzes): the app prepares bilingual teachers, so tasks stay in school settings.
@@ -467,7 +478,8 @@ LESSON_PLAN_GRADES = ["Kindergarten", "Grade 1", "Grade 2", "Grade 3", "Grade 4"
 
 ESSAY_TYPE_SHAPES = {
     "opinion": (
-        "an opinion question about a school or education policy — phrased so the "
+        "an opinion question about a school or education policy, asked of the writer as an "
+        "educator (their professional view as a teacher, not as a pupil) — phrased so the "
         "writer must take a side AND give at least two advantages and two disadvantages. "
         "Put the question in instructions, ending with: 'Sustenta tus ideas indicando un mínimo "
         "de dos ventajas y dos desventajas.' Leave heading and content empty."
@@ -1133,13 +1145,16 @@ Respond using the exact fields requested.
             example = ORAL_TYPE_DEFAULTS[oral_type]["spanish"]
         else:
             shape = (
-                "a speaking prompt asking the student to describe a personal experience or a "
-                "hypothetical related to school, teaching or learning that they can talk about "
-                "for 50-120 seconds"
+                "a speaking prompt asking the teacher to describe a personal experience or a "
+                "hypothetical from their work as a teacher (a lesson that went well, a school event "
+                "they organized, how they supported a student or a family…) that they can talk "
+                "about for 50-120 seconds"
             )
             example = DEFAULT_ORAL_TASK["spanish"]
 
-        prompt = f"""Write ONE fresh Spanish {kind} task prompt for a student at CEFR level {level}.
+        prompt = f"""Write ONE fresh Spanish {kind} task prompt for a bilingual teacher whose Spanish is at CEFR level {level}.
+
+Who answers: {TEACHER_ROLE_RULE}
 
 The prompt must be {shape}
 

@@ -740,6 +740,8 @@ class SchoolContextTests(TestCase):
                 self.service.generate_task(kind, 'B1', essay_type, oral_type)
             self.assertIn(gs.SCHOOL_CONTEXT_RULE, gen.call_args.args[0], (kind, essay_type, oral_type))
             self.assertIn('grocery store', gen.call_args.args[0])
+            self.assertIn(gs.TEACHER_ROLE_RULE, gen.call_args.args[0])
+            self.assertIn('NOT a K-12 student', gen.call_args.args[0])
 
 
 # ---------------------------------------------------------------------------
