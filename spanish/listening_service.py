@@ -72,6 +72,9 @@ Rules for questions and options:
 - Questions and options in Spanish, at the student's level.
 - 4 options each; exactly ONE is clearly best based on the audio; `answer_N` is that option's
   text copied EXACTLY.
+- Write each option as plain text with NO letter or number in front ("Un pintor famoso…", not
+  "A) Un pintor famoso…"): the app shuffles the options and adds the letters itself. For the
+  same reason, never refer to an option by its letter in `explanation_N`.
 - Distractors must be plausible and related to the selection: a true detail that doesn't answer
   the question, a related but narrower idea, a detail incorrectly connected, an inference that
   goes beyond the evidence, a reversed cause/effect. No absurd options, no option much longer
@@ -141,6 +144,16 @@ Fields:
 {QUESTION_MIX}"""
 
 
+# "A) ", "b. ", "(C) ", "D - " … that the model sometimes puts in front of an option.
+_OPTION_LABEL = re.compile(r"^\s*\(?[A-Da-d1-4]\s?[\).:\-]\s+")
+
+
+def strip_option_label(text):
+    """Option text without a leading letter label — the app shuffles options and adds its own
+    A–D, so a label the model wrote would show up twice ("A. D) …")."""
+    return _OPTION_LABEL.sub("", text.strip(), count=1)
+
+
 def _validate(r: ListeningResponse, selection_type) -> list:
     """Questions as [{question, options, answer, explanation}] with options shuffled; raises
     ValueError on a malformed selection so the caller can retry."""
@@ -153,8 +166,8 @@ def _validate(r: ListeningResponse, selection_type) -> list:
         raise ValueError("a line names an unknown speaker")
     questions = []
     for i in range(1, QUESTIONS + 1):
-        options = [o.strip() for o in getattr(r, f"options_{i}")]
-        answer = getattr(r, f"answer_{i}").strip()
+        options = [strip_option_label(o) for o in getattr(r, f"options_{i}")]
+        answer = strip_option_label(getattr(r, f"answer_{i}"))
         if len(options) != 4 or len(set(options)) != 4 or answer not in options:
             raise ValueError(f"question {i}: need 4 distinct options containing the answer")
         random.shuffle(options)   # the model tends to put the answer first

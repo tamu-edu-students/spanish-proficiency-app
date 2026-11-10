@@ -51,7 +51,7 @@
             - generic [ref=e84]: Do you think community parks should close at sunset? Support your ideas by indicating a minimum of two advantages and two disadvantages. (You will have approximately 25 minutes to complete this part of the BTLPT exam.)
         - button "Hide English" [ref=e85] [cursor=pointer]
         - generic [ref=e86]:
-          - generic [ref=e87]: Minimum 75 words. No upper limit.
+          - generic [ref=e87]: Minimum 150 words. No upper limit.
           - generic [ref=e88]: "Your time: 00:00"
           - generic [ref=e89]:
             - button "Write your own prompt" [ref=e90] [cursor=pointer]

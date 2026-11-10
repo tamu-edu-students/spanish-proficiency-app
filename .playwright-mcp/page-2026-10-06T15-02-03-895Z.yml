@@ -51,7 +51,7 @@
             - generic [ref=f1e59]: Do you think schools should ban sugary drinks in the cafeteria? Support your ideas by indicating a minimum of two advantages and two disadvantages. (You will have approximately 25 minutes to complete this part of the BTLPT exam.)
         - button "Hide English" [ref=f1e60] [cursor=pointer]
         - generic [ref=f1e61]:
-          - generic [ref=f1e62]: Minimum 75 words. No upper limit.
+          - generic [ref=f1e62]: Minimum 150 words. No upper limit.
           - generic [ref=f1e63]: "Your time: 00:00"
           - generic [ref=f1e64]:
             - button "Write your own prompt" [ref=f1e65] [cursor=pointer]

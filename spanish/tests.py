@@ -911,6 +911,20 @@ class ListeningServiceTests(TestCase):
             self.assertIn(q['answer'], q['options'])
             self.assertEqual(sorted(q['options']), ['a', 'b', 'c', 'd'])
 
+    def test_letter_labels_the_model_writes_are_stripped(self):
+        labelled = listening_json(options_1=['A) Un pintor', 'B. Un artesano', '(C) Un coleccionista', 'D - Un curandero'],
+                                  answer_1='B. Un artesano')
+        selection, _ = self._generate([labelled])
+        q = selection['questions'][0]
+        self.assertEqual(sorted(q['options']), ['Un artesano', 'Un coleccionista', 'Un curandero', 'Un pintor'])
+        self.assertEqual(q['answer'], 'Un artesano')
+
+    def test_pooled_selection_with_labelled_options_is_stale(self):
+        from .prompt_pool import is_current
+        q = {'question': '¿?', 'answer': 'Un pintor', 'explanation_english': 'x'}
+        self.assertFalse(is_current('listening', {'questions': [dict(q, options=['A) Un pintor', 'B) Otro'])]}))
+        self.assertTrue(is_current('listening', {'questions': [dict(q, options=['Un pintor', 'A las tres'])]}))
+
     def test_a_malformed_selection_is_regenerated(self):
         bad = listening_json(answer_2='z')   # answer not among the options
         selection, client = self._generate([bad, listening_json()])

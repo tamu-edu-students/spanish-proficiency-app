@@ -39,7 +39,7 @@ const STRINGS = {
     backToGenerated:    'Back to generated prompt',
     customPromptBadge:  'Custom prompt',
     essayPlaceholder:   'Begin writing here...',
-    noteEssay:          'Minimum 75 words. No upper limit.',
+    noteEssay:          'Minimum 150 words. No upper limit.',
     noteLessonPlan:     'Cover grade, vocabulary, materials, procedures & evaluation. Minimum 150 words.',
     noteAudio:          'Speak for 50–120 seconds.',
     showTranslation:    'Show English',

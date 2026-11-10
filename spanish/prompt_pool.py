@@ -34,7 +34,13 @@ def is_current(kind, task):
     before each question carried an English rationale. Stale rows are dropped, not served."""
     if kind == "listening":
         questions = task.get("questions") or []
-        return bool(questions) and all(q.get("explanation_english") for q in questions)
+        from .listening_service import strip_option_label
+        return bool(questions) and all(
+            q.get("explanation_english")
+            # options the model labelled "A) …" would show doubled letters ("A. D) …")
+            and all(strip_option_label(o) == o.strip() for o in q.get("options", []))
+            for q in questions
+        )
     return True
 
 

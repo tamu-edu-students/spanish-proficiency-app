@@ -43,7 +43,7 @@
       - generic [ref=e116]:
         - status [ref=e117]: Generating a prompt...
         - generic [ref=e118]:
-          - generic [ref=e119]: Minimum 75 words. No upper limit.
+          - generic [ref=e119]: Minimum 150 words. No upper limit.
           - generic [ref=e120]: "Your time: 00:00"
           - generic [ref=e121]:
             - button "Write your own prompt" [ref=e122] [cursor=pointer]
