@@ -409,7 +409,9 @@ function AccentBar({ t, targetRef, onInsert }) {
           disabled={!picked}
           style={{ marginLeft: '6px', minHeight: '30px', padding: '4px 14px', background: picked ? MAROON : '#ccc', color: '#fff', border: 'none', fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '13px', cursor: picked ? 'pointer' : 'not-allowed' }}
         >
-          {t.insertCharacter}{picked && ` ${picked}`}
+          {t.insertCharacter}
+          {/* the button's uppercase styling would otherwise show 'é' as 'É' */}
+          {picked && <span lang="es" style={{ textTransform: 'none', marginLeft: '6px', fontSize: '15px' }}>{picked}</span>}
         </button>
       </div>
       <p style={{ color: '#666', fontSize: '13px', margin: '6px 0 0', lineHeight: 1.5 }}>{t.accentHelp}</p>
