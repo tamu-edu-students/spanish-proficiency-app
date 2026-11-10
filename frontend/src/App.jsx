@@ -1,4 +1,4 @@
-import { Fragment, useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 import ChatScreen      from './screens/ChatScreen'
 import FlashcardScreen from './screens/FlashcardScreen'
@@ -18,27 +18,29 @@ const LEVELS = [
   { value: 'B2', label: 'B2 - Upper Intermediate' },
 ]
 
+// Tab keys are internal ids; 'oral' is the BTLPT speaking tasks (shown as "Speaking"),
+// 'speaking' is the free-topic Graded Speaking grader.
 const TAB_LABELS = {
   en: {
-    voice: 'Voice',
+    oral: 'Speaking',
     reading: 'Reading',
     writing: 'Writing',
-    speaking: 'Graded Speaking',
-    oral: 'Oral Tasks',
-    chat: 'Chat',
-    flashcard: 'Cards',
+    chat: 'Chat (Written)',
+    voice: 'Chat (Voice)',
+    flashcard: 'Vocabulary Cards',
     quiz: 'Grammar Quiz',
+    speaking: 'Graded Speaking',
     progress: 'Progress',
   },
   es: {
-    voice: 'Voz',
+    oral: 'Expresión oral',
     reading: 'Lectura',
     writing: 'Escritura',
-    speaking: 'Expresión oral calificada',
-    oral: 'Tareas orales',
-    chat: 'Chat',
-    flashcard: 'Tarjetas',
+    chat: 'Chat (escrito)',
+    voice: 'Chat (voz)',
+    flashcard: 'Tarjetas de vocabulario',
     quiz: 'Prueba de gramática',
+    speaking: 'Expresión oral calificada',
     progress: 'Progreso',
   },
 }
@@ -46,11 +48,11 @@ const TAB_LABELS = {
 // Sidebar sections, in display order. Empty tabs[] renders a "coming soon" stub.
 const TAB_SECTIONS = [
   { en: 'Listening', es: 'Comprensión auditiva', tabs: [] },
-  { en: 'Speaking',  es: 'Expresión oral',       tabs: ['speaking', 'voice'] },
-  { en: 'BTLPT Oral Exam', es: 'Examen Oral BTLPT', tabs: ['oral'] },
+  { en: 'Speaking',  es: 'Expresión oral',       tabs: ['oral'] },
   { en: 'Reading',   es: 'Lectura',              tabs: ['reading'] },
   { en: 'Writing',   es: 'Escritura',            tabs: ['writing'] },
-  { en: 'More',      es: 'Más',                  tabs: ['chat', 'flashcard', 'quiz', 'progress'] },
+  { en: 'Additional Practice', es: 'Práctica adicional', group: true,
+    tabs: ['chat', 'voice', 'flashcard', 'quiz', 'speaking', 'progress'] },
 ]
 
 // Writing's BTLPT task types (Domain IV), nested under the Writing tab.
@@ -120,6 +122,33 @@ function App() {
   const [user, setUser]                 = useState(null)
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [labelLanguage, setLabelLanguage] = useState('en')
+  // Starts open because the default tab (Chat) lives inside Additional Practice.
+  // Which sidebar groups are expanded, keyed by section name.
+  const [openGroups, setOpenGroups] = useState({ 'Additional Practice': true })
+
+  // A group section's sub-items, or null for a plain one-tab section. Speaking and
+  // Writing list their task types; Additional Practice lists its tabs.
+  function navItems(section) {
+    if (section.group) {
+      return section.tabs.map(tabKey => ({
+        key: tabKey, label: tabLabels[tabKey], active: activeTab === tabKey,
+        onClick: () => setActiveTab(tabKey),
+      }))
+    }
+    if (section.tabs[0] === 'oral') {
+      return ORAL_TYPES.map(type => ({
+        key: type, label: t[ORAL_TYPE_LABEL_KEY[type]], active: activeTab === 'oral' && oralType === type,
+        onClick: () => { setActiveTab('oral'); setOralType(type) },
+      }))
+    }
+    if (section.tabs[0] === 'writing') {
+      return writingTypes.map(type => ({
+        key: type, label: t[WRITING_TYPE_LABEL_KEY[type]], active: activeTab === 'writing' && shownEssayType === type,
+        onClick: () => { setActiveTab('writing'); setEssayType(type) },
+      }))
+    }
+    return null
+  }
 
   const levelLocked = activeTab === 'voice'
   const writingTypes = writingTypesFor(userLevel)
@@ -333,13 +362,20 @@ function App() {
           <LevelSelect value={userLevel} onChange={setUserLevel} disabled={levelLocked} t={t} />
         </div>
 
-        {TAB_SECTIONS.map(section => (
-          <div className="tab-section" key={section.en}>
-            <span className="tab-section-label">{section[labelLanguage] || section.en}</span>
-            {section.tabs.length === 0 ? (
-              <button className="tab-btn" disabled>{(section[labelLanguage] || section.en) + ' — ' + t.comingSoon}</button>
-            ) : section.tabs.map(tabKey => (
-              <Fragment key={tabKey}>
+        {TAB_SECTIONS.map(section => {
+          const sectionName = section[labelLanguage] || section.en
+          if (section.tabs.length === 0) {
+            return (
+              <div className="tab-section" key={section.en}>
+                <button className="tab-btn" disabled>{sectionName + ' — ' + t.comingSoon}</button>
+              </div>
+            )
+          }
+          const items = navItems(section)
+          if (!items) {
+            const tabKey = section.tabs[0]
+            return (
+              <div className="tab-section" key={section.en}>
                 <button
                   className={`tab-btn ${activeTab === tabKey ? 'active' : ''}`}
                   aria-current={activeTab === tabKey ? 'page' : undefined}
@@ -347,30 +383,41 @@ function App() {
                 >
                   {tabLabels[tabKey]}
                 </button>
-                {tabKey === 'writing' && activeTab === 'writing' && writingTypes.map(type => (
-                  <button
-                    key={type}
-                    className={`tab-btn tab-subitem ${shownEssayType === type ? 'active' : ''}`}
-                    aria-current={shownEssayType === type ? 'true' : undefined}
-                    onClick={() => setEssayType(type)}
-                  >
-                    {t[WRITING_TYPE_LABEL_KEY[type]]}
-                  </button>
-                ))}
-                {tabKey === 'oral' && activeTab === 'oral' && ORAL_TYPES.map(type => (
-                  <button
-                    key={type}
-                    className={`tab-btn tab-subitem ${oralType === type ? 'active' : ''}`}
-                    aria-current={oralType === type ? 'true' : undefined}
-                    onClick={() => setOralType(type)}
-                  >
-                    {t[ORAL_TYPE_LABEL_KEY[type]]}
-                  </button>
-                ))}
-              </Fragment>
-            ))}
-          </div>
-        ))}
+              </div>
+            )
+          }
+          // Group (Speaking, Writing, Additional Practice): the heading only opens/closes
+          // the list; clicking an item underneath is what opens a page.
+          const open = !!openGroups[section.en]
+          const holdsActive = items.some(item => item.active)
+          const listId = `nav-${section.en.toLowerCase().replace(/\s+/g, '-')}`
+          return (
+            <div className="tab-section" key={section.en}>
+              <button
+                className={`tab-btn ${holdsActive && !open ? 'active' : ''}`}
+                aria-expanded={open}
+                aria-controls={listId}
+                onClick={() => setOpenGroups(g => ({ ...g, [section.en]: !g[section.en] }))}
+              >
+                {sectionName} <span aria-hidden="true">{open ? '▾' : '▸'}</span>
+              </button>
+              {open && (
+                <div id={listId} style={{ display: 'contents' }}>
+                  {items.map(item => (
+                    <button
+                      key={item.key}
+                      className={`tab-btn tab-subitem ${item.active ? 'active' : ''}`}
+                      aria-current={item.active ? 'page' : undefined}
+                      onClick={item.onClick}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
 
       </nav>
 
