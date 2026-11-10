@@ -30,6 +30,10 @@ steps:
       - '--timeout'
       - '3600'
       - '--no-cpu-throttling'
+      # one instance always warm: no cold-start wait, and background prompt refills
+      # aren't killed by scale-to-zero. Costs an always-on instance — drop to 0 to save.
+      - '--min-instances'
+      - '1'
       - '--set-secrets'
       - 'SECRET_KEY=django-secret-key:latest,GEMINI_API_KEY=gemini-api-key:latest,DATABASE_URL=database-url:latest'
       - '--set-env-vars'

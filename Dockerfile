@@ -16,7 +16,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY manage.py .
+COPY manage.py start.sh ./
+RUN sed -i 's/\r$//' start.sh && chmod +x start.sh
 COPY backend/ ./backend/
 COPY spanish/ ./spanish/
 COPY --from=frontend-build /app/frontend/dist ./frontend/dist
@@ -24,4 +25,5 @@ COPY --from=frontend-build /app/frontend/dist ./frontend/dist
 RUN python manage.py collectstatic --noinput
 
 EXPOSE 8080
-CMD daphne -b 0.0.0.0 -p ${PORT:-8080} backend.asgi:application
+# migrate → background prompt-pool prefill → daphne (see start.sh)
+CMD ["./start.sh"]

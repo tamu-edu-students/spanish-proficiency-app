@@ -399,6 +399,26 @@ class PromptEndpointTests(TestCase):
         self.assertEqual(gen.call_count, prompt_pool.POOL_SIZE - 1)
         self.assertEqual(PromptPool.objects.count(), prompt_pool.POOL_SIZE)
 
+    def test_a_failed_generation_is_skipped_not_fatal(self):
+        results = iter([RuntimeError('429'), TASK, TASK])
+        def flaky(*args):
+            r = next(results, TASK)
+            if isinstance(r, Exception):
+                raise r
+            return r
+        with patch.object(prompt_pool, 'POOL_SIZE', 3), \
+             patch('spanish.grading_service.service.generate_task', side_effect=flaky):
+            prompt_pool.refill('essay', 'opinion', 'B1')
+        self.assertEqual(PromptPool.objects.count(), 2)
+
+    def test_prefill_also_fills_graded_speaking(self):
+        from django.core.management import call_command
+        with patch('spanish.management.commands.prefill_prompts.refill') as refill:
+            call_command('prefill_prompts', stdout=open(os.devnull, 'w'))
+        keys = {call.args for call in refill.call_args_list}
+        self.assertIn(('audio', '', 'A1'), keys)
+        self.assertNotIn(('essay', 'lesson_plan', 'A1'), keys)
+
     def test_rejects_an_unknown_kind(self):
         res = self.client.post('/api/grade/prompt/', {'kind': 'video', 'level': 'A2'})
         self.assertEqual(res.status_code, 400)
